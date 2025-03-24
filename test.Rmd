@@ -1,6 +1,6 @@
 ---
-title: "AAD Assignment 1"
-author: "Omar"
+title: "AAD Assignment 1 - Group 26"
+author: "Omar, Eloise, Alina, Sue"
 date: "`r Sys.Date()`"
 output: pdf_document
 ---
