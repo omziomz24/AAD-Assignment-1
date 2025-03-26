@@ -20,8 +20,10 @@ summary(data)
 head(data)
 dim(data) 
 
+data$oceanProximity <- as.factor(data$oceanProximity)
+
 # NA's
-incomplete_rows <- data[!complete.cases(data), ] # these are all missing aveBedrooms.
+incomplete_rows <- data[!complete.cases(data), ] # these are all missing aveBedrooms. Might be best to just use data_clean if we want to include aveBedrooms.
 data_clean <- na.omit 
 
 
@@ -43,12 +45,57 @@ for (col in names(data)) {
          main = paste(col, "vs", target_col))
   }
 }
+# For qualitative variable
+boxplot(medianHouseValue ~ oceanProximity, data = data,
+        main = "Median House Value by Ocean Proximity",
+        xlab = "Ocean Proximity",
+        ylab = "Median House Value",
+        col = "lightblue")
 
+# Need to include more stuff, very basic here
 
 ```
+2.2 Multiple linear regression
+
+```{r }
+# initial model
+
+lm.fit <- lm(medianHouseValue~.-id,data = data) # ID not a relevant predictor
+summary(lm.fit)
+# population (population in particular) and island and near bay look iffy
+
+contrasts(data$oceanProximity)
 
 
+plot(lm.fit)
+# some outliers/leverage points
+# clear heteroscedasticity
 
+
+# Checking Collinearity
+library(car)
+vif(lm.fit)
+
+# Correlation matrix
+numeric_vars <- data[sapply(data, is.numeric)]
+cor_matrix <- cor(numeric_vars, use = "complete.obs")
+round(cor_matrix, 2)
+
+#Long and lat highly correlated, so are ave rooms and ave bedrooms
+# can create a bedrooms to rooms ratio and include that. Or just exclude one
+# also test exclude the houses with like 40 rooms, could be leverage point
+
+
+## Option for long/lat
+# Normalise the values (optional but helpful)
+data$norm_long <- scale(data$longitude)
+data$norm_lat <- scale(data$latitude)
+
+# Combine into a new feature
+data$northwest_index <- -data$norm_long + data$norm_lat
+
+# or can do interaction term?? This might be simpler. See which one is better after testing
+```
 
 
 #For plots
