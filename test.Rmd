@@ -64,11 +64,39 @@ for (col in names(data)) {
 
 ```
 
+```{r}
+# Some correlations 
+summary(data_naomit) 
+numeric.data <- data_naomit[sapply(data_naomit, is.numeric)]
+View(numeric.data)
+cor_medianHouseValue <- cor(data_naomit$medianHouseValue, 
+                            data_naomit[, c("longitude", 
+                                            "latitude", 
+                                            "housingMedianAge",
+                                            "aveRooms",
+                                            "aveBedrooms",
+                                            "population",
+                                            "medianIncome")])
+print(cor_medianHouseValue)
+```
+
+## Some Discriptives on Response (medianHouseValue) 
+```{r}
+hist(data_naomit$medianHouseValue,
+     xlab = "Median House Value ($)",
+     ylab = "Frequency",
+     main = "Hostogram of Median House Value",
+     breaks = 25)
+```
 
 
 
 
-#For plots
+
+
+
+
+# For plots
 ```{r, echo=FALSE}
 
 data_naomit <- na.omit(data)
@@ -78,6 +106,50 @@ pairs(data_naomit[, c("longitude", "latitude", "housingMedianAge",
                       "aveRooms", "population", "medianIncome", "medianHouseValue")],
       cex = 0.1)
 ```
+
+## Some other plots 
+```{r}
+
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+# Multiple Linear Regression 
+
+## Using all predictors (id is not a predictor)
+
+The p-value of the F-test is practically zero, therefore we have sufficient evidence to reject the null hypothesis that all regression coefficients are zero. This means that the model has overall significance, and that at least one of the predictors are useful in explaning the variation in the response variable (i.e. medianHouseValue). 
+
+Having concluded that this model (fit1_MHV) has overall significance, we can gauge the significance of individual predictors through the t-test p-values. It is clear that population is not useful, as we do not have sufficient evidence to reject the null hypothesis that its corresponding coefficient is non-zero. The dummy variable, "NEAR BAY", associated to the categorical predictor, "oceanProximity", is also shown to be insignificant. This might be an indication that comparing to the base case (<1H OCEAN), NEAR BAY does not lead to significant change in Median House Price. 
+```{r}
+fit1_MHV <- lm(data_naomit$medianHouseValue ~. - id, data = data_naomit)
+summary(fit1_MHV)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
