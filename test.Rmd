@@ -4,16 +4,50 @@ author: "Omar, Eloise, Alina, Sue"
 date: "`r Sys.Date()`"
 output: pdf_document
 ---
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
-
-
 Testing again
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+
+
+
+
+#2.1 Descriptive analysis of the data set
+
+```{r }
+data <- read.csv("Assignt1_data.csv")
+
+# Summary stuff
+str(data) 
+summary(data)
+head(data)
+dim(data) 
+
+# NA's
+incomplete_rows <- data[!complete.cases(data), ] # these are all missing aveBedrooms.
+data_clean <- na.omit 
+
+
+# no duplicates
+library(dplyr) 
+data2 <- distinct(data) # no duplicates
+  
+
+
+# initial plots
+target_col <- "medianHouseValue"
+exclude <- c("id","oceanProximity",target_col)
+
+for (col in names(data)) {
+  if (!(col %in% exclude)) {
+    plot(data[[col]], data[[target_col]],
+         xlab = col,
+         ylab = target_col,
+         main = paste(col, "vs", target_col))
+  }
+}
+```
+
 
 
 
@@ -135,19 +169,6 @@ Having concluded that this model (fit1_MHV) has overall significance, we can gau
 fit1_MHV <- lm(data_naomit$medianHouseValue ~. - id, data = data_naomit)
 summary(fit1_MHV)
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
