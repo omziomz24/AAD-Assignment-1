@@ -81,4 +81,3 @@ pairs(data_naomit[, c("longitude", "latitude", "housingMedianAge",
 
 
 
-
