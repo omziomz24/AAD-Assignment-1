@@ -9,22 +9,117 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+## Part 2.1: Descriptive Analysis of the Data Set
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+### Part 1: Load and clean the data
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+```{r part 1 load and clean data, echo=TRUE, message=FALSE, warning=FALSE}
+# Load Libraries
+library(dplyr)
+library(ggplot2)
+library(GGally)
+library(car)
 
-```{r cars}
-summary(cars)
+# Read dataset
+data <- read.csv("Assignt1_data.csv", header = TRUE, stringsAsFactors = FALSE)
+
+# Check data
+str(data)
+head(data)
+summary(data)
+
+## Data cleaning ##
+
+# Missing values
+missing_values <- sapply(data, function(x) sum(is.na(x)))
+print(missing_values)
+
+data_clean <- na.omit(data)
+cat("Dimensions of original data: ", dim(data), "\n")
+cat("Dimensions of cleaned data: ", dim(data_clean), "\n")
+
+summary(data_clean)
+
+# Count the number of duplicate rows
+num_duplicates <- sum(duplicated(data))
+cat("Number of duplicate rows:", num_duplicates, "\n")
+
+data_clean <- distinct(data_clean)
+
+# Define cleaned dataset as data again
+data <- data_clean
+
 ```
 
-## Including Plots
+### Part 2: Basic Numerical and Graphical Analysis of Data
 
-You can also embed plots, for example:
+```{r part 2 pleminary studies on data, echo=TRUE, message=FALSE, warning=FALSE, fig.width=10, fig.height=10}
+## Numerical Analysis ##
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+summary(data)
+
+numeric_vars <- sapply(data, is.numeric)
+numeric_vars["id"] <- FALSE # Not necessary for numerical and graphical analysis
+std_devs <- sapply(data[, numeric_vars], sd)
+print(std_devs)
+
+## Graphical Analysis ##
+
+# Histogram for numeric variables
+numeric_vars_names <- names(data)[numeric_vars]
+
+for (var in numeric_vars_names) {
+  hist(data[[var]],
+       main=paste("Histogram of ", var),
+       xlab=var,
+       col="lightblue",
+       border="black"
+  )
+}
+
+# Box plots to identify outliers
+for (var in numeric_vars_names) {
+  boxplot(data[[var]],
+          main=paste("Boxplot of ", var),
+          xlab=var,
+          col="lightblue",
+          border="black"
+  )
+}
+
+# Scatter plot matrix for numeric variables
+print(numeric_vars)
+pairs(data[, numeric_vars],
+      main = "Scatterplot Matrix of Numerical Variables",
+      pch=19,
+      cex=0.5,
+      col="lightblue",
+      border="black"
+)
+```
+
+## Part 2.2: Multiple Linear Regression
+
+### Part 1. Building the model
+
+```{r initial_model, echo=FALSE, message=FALSE, warning=FALSE}
+# Convert oceanProximity to a factor and ignore id so make it a factor
+data$oceanProximity <- as.factor(data$oceanProximity)
+data$id <- as.factor(data$id)
+
+## Make Initial MLR ##
+initial_MLR <- lm(medianHouseValue ~ . - id, data=data)
+
+# Analyse Initial Model
+summary(initial_MLR)
+anova(initial_MLR)
+
+plot(initial_MLR)
+
+# Check for collinearity
+vif(initial_MLR)
+
+
 ```
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
