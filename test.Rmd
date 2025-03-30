@@ -26,7 +26,13 @@ incomplete_rows <- data[!complete.cases(data), ] # these are all missing aveBedr
 data <- na.omit(data)
 rownames(data) <- 1:nrow(data) # need to do this otherwise can't remove outliers
 
-  
+
+
+#censoring
+data[order(-data$medianHouseValue), ]
+value <- 500001  # change to your target value
+percentage <- mean(data$medianHouseValue == value) * 100
+cat("Percentage of data with medianHouseValue =", value, "is", percentage, "%\n")
 
 
 # initial plots
@@ -171,10 +177,11 @@ summary(regfit.full)
 # New fit
 data$bedroomsPerRoom <- data$aveBedrooms / data$aveRooms
 #Removing some of these
-data$oceanProximity <- factor(data$oceanProximity, levels = setdiff(levels(data$oceanProximity), c("NEAR BAY", "ISLAND","NEAR OCEAN")))
+#data$oceanProximity <- factor(data$oceanProximity, levels = setdiff(levels(data$oceanProximity), c("NEAR BAY", "ISLAND","NEAR OCEAN")))
+# need to do this in PCR or ridge regression
 
 
-lm.fit <- lm(medianHouseValue~poly(medianIncome,3)+longitude+latitude+longitude:latitude +bedroomsPerRoom +oceanProximity +housingMedianAge,data = data_unlev) # change between data and data_unlev
+lm.fit <- lm(medianHouseValue~poly(medianIncome,3)+longitude+latitude+longitude:latitude +bedroomsPerRoom +oceanProximity +housingMedianAge,data = data) # change between data and data_unlev
 summary(lm.fit)
 plot(lm.fit)
 deviance(lm.fit)
@@ -191,7 +198,7 @@ summary(regfit.full)
 
 
 # bedroomsPerRoom is good, still iffy with long and lat. Need to do something else
-# play around more, also can do ridge, lasso and pcr maybe?
+# play around more, also can do ridge, lasso and pcr maybe? - for oceanProximity to remove the irrelevant ones
 ```
 
 
@@ -199,3 +206,7 @@ summary(regfit.full)
 ```{r, echo=FALSE}
 
 ```
+
+
+
+
