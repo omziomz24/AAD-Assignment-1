@@ -19,17 +19,13 @@ str(data)
 summary(data)
 head(data)
 dim(data) 
-
 data$oceanProximity <- as.factor(data$oceanProximity)
 
 # NA's
-incomplete_rows <- data[!complete.cases(data), ] # these are all missing aveBedrooms. Might be best to just use data_clean if we want to include aveBedrooms.
-data_clean <- na.omit 
+incomplete_rows <- data[!complete.cases(data), ] # these are all missing aveBedrooms.
+data <- na.omit(data)
+rownames(data) <- 1:nrow(data) # need to do this otherwise can't remove outliers
 
-
-# no duplicates
-library(dplyr) 
-data2 <- distinct(data) # no duplicates
   
 
 
@@ -55,15 +51,91 @@ boxplot(medianHouseValue ~ oceanProximity, data = data,
 # Need to include more stuff, very basic here
 
 ```
+
+Single linear regression
+
+```{r }
+#Do each linear regression separately and view plots
+#longitude, clearly non-linear poly?
+lm.fit <- lm(medianHouseValue~longitude,data = data) 
+summary(lm.fit)
+plot(lm.fit)
+
+# latitude, again non-linear poly?
+lm.fit <- lm(medianHouseValue~latitude,data = data) 
+summary(lm.fit)
+plot(lm.fit)
+
+#housing median age - good fit for first graph
+lm.fit <- lm(medianHouseValue~housingMedianAge,data = data) 
+summary(lm.fit)
+plot(lm.fit)
+
+#aveRooms, definitely non-linear, big issue with high leverage points
+lm.fit <- lm(medianHouseValue~aveRooms,data = data) 
+summary(lm.fit)
+plot(lm.fit)
+
+
+#aveBedrooms, issue with high leverage points
+lm.fit <- lm(medianHouseValue~aveBedrooms,data = data) 
+summary(lm.fit)
+plot(lm.fit)
+
+#population, issues with leverage, heterscedascity
+lm.fit <- lm(medianHouseValue~population,data = data) 
+summary(lm.fit)
+plot(lm.fit)
+
+#medianIncome non-linear and heterscedascity, some influential points too
+lm.fit <- lm(medianHouseValue~medianIncome,data = data) 
+summary(lm.fit)
+plot(lm.fit)
+
+#oceanProximity catergorical and need to play around with this a bit
+lm.fit <- lm(medianHouseValue~oceanProximity,data = data) 
+summary(lm.fit)
+plot(lm.fit)
+
+
+#playing around a bit
+#medianIncome non-linear and heterscedascity, some influential points too
+#better
+lm.fit <- lm(medianHouseValue~log(medianIncome),data = data) 
+summary(lm.fit)
+plot(lm.fit)
+
+#poly 2 looks pretty good, better than log
+lm.fit <- lm(medianHouseValue~poly(medianIncome,2),data = data) 
+summary(lm.fit)
+plot(lm.fit)
+
+
+#looks way better
+#population, issues with leverage, heterscedascity
+lm.fit <- lm(medianHouseValue~log(population),data = data) 
+summary(lm.fit)
+plot(lm.fit)
+
+
+lm.fit <- lm(medianHouseValue~bedroomsPerRoom,data = data) 
+summary(lm.fit)
+plot(lm.fit)
+
+```
+
+
+
+
 2.2 Multiple linear regression
 
 ```{r }
 # initial model
 
-lm.fit <- lm(medianHouseValue~.-id,data = data) # ID not a relevant predictor
+lm.fit <- lm(medianHouseValue~.-id-bedroomsPerRoom,data = data) # ID not a relevant predictor
 summary(lm.fit)
 # population (population in particular) and island and near bay look iffy
-
+deviance(lm.fit)
 contrasts(data$oceanProximity)
 
 
@@ -84,17 +156,42 @@ round(cor_matrix, 2)
 #Long and lat highly correlated, so are ave rooms and ave bedrooms
 # can create a bedrooms to rooms ratio and include that. Or just exclude one
 # also test exclude the houses with like 40 rooms, could be leverage point
-
-
-## Option for long/lat
-# Normalise the values (optional but helpful)
-data$norm_long <- scale(data$longitude)
-data$norm_lat <- scale(data$latitude)
-
-# Combine into a new feature
-data$northwest_index <- -data$norm_long + data$norm_lat
-
 # or can do interaction term?? This might be simpler. See which one is better after testing
+
+library(leaps)
+
+regfit.full=regsubsets(medianHouseValue~.-id,data = data,nvmax =12)
+summary(regfit.full)
+
+# Bedrooms better than rooms, could remove rooms, or do an bedrooms/rooms
+# longitude and latitude equal and important, could do PCA or just do interaction term
+# population unimportant
+
+
+# New fit
+data$bedroomsPerRoom <- data$aveBedrooms / data$aveRooms
+#Removing some of these
+data$oceanProximity <- factor(data$oceanProximity, levels = setdiff(levels(data$oceanProximity), c("NEAR BAY", "ISLAND","NEAR OCEAN")))
+
+
+lm.fit <- lm(medianHouseValue~poly(medianIncome,3)+longitude+latitude+longitude:latitude +bedroomsPerRoom +oceanProximity +housingMedianAge,data = data_unlev) # change between data and data_unlev
+summary(lm.fit)
+plot(lm.fit)
+deviance(lm.fit)
+
+# Threshold for outliers
+threshold <- 2 * (length(coef(lm.fit)) + 1) / nrow(data)
+
+# Remove outliers
+data_unlev <- data[-c(5278),]
+
+
+regfit.full=regsubsets(medianHouseValue~poly(medianIncome,3)+longitude+latitude+longitude:latitude+bedroomsPerRoom +oceanProximity +housingMedianAge,data = data)
+summary(regfit.full)
+
+
+# bedroomsPerRoom is good, still iffy with long and lat. Need to do something else
+# play around more, also can do ridge, lasso and pcr maybe?
 ```
 
 
