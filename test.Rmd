@@ -7,6 +7,8 @@ output: pdf_document
 Testing again
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+
+library(car)
 ```
 
 
@@ -155,7 +157,7 @@ pairs(data_naomit[, c("longitude", "latitude", "housingMedianAge",
 
 
 
-
+2Fc27cKCitvAnJb
 
 
 # Multiple Linear Regression 
@@ -170,6 +172,28 @@ fit1_MHV <- lm(data_naomit$medianHouseValue ~. - id, data = data_naomit)
 summary(fit1_MHV)
 ```
 
+## Residual plot etc 
+```{r}
+par(mfrow = c(2,2))
+plot(fit1_MHV, cex = 0.1)
+```
+
+## Outliers 
+```{r}
+
+```
+
+## High Leverage Points 
+```{r}
+
+```
+
+## Collinearity 
+The arbitrary threshold of severe collinearity is vif greater or equal to 5. Here, 
+all the predictors are shown to have a non-severe VIF. 
+```{r}
+vif(fit1_MHV)
+```
 
 
 
