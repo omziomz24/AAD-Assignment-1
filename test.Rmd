@@ -103,7 +103,7 @@ lm.fit <- lm(medianHouseValue~oceanProximity,data = data)
 summary(lm.fit)
 plot(lm.fit)
 
-
+# Keep medianIncome the same
 #playing around a bit
 #medianIncome non-linear and heterscedascity, some influential points too
 #better
@@ -116,6 +116,8 @@ lm.fit <- lm(medianHouseValue~poly(medianIncome,2),data = data)
 summary(lm.fit)
 plot(lm.fit)
 
+
+## MOST IMPORTANT BITS
 
 #looks way better
 #population, issues with leverage, heterscedascity
@@ -137,7 +139,8 @@ plot(lm.fit)
 
 ```{r }
 # initial model
-
+# New fit
+data$bedroomsPerRoom <- data$aveBedrooms / data$aveRooms
 lm.fit <- lm(medianHouseValue~.-id-bedroomsPerRoom,data = data) # ID not a relevant predictor
 summary(lm.fit)
 # population (population in particular) and island and near bay look iffy
@@ -169,44 +172,134 @@ library(leaps)
 regfit.full=regsubsets(medianHouseValue~.-id,data = data,nvmax =12)
 summary(regfit.full)
 
-# Bedrooms better than rooms, could remove rooms, or do an bedrooms/rooms
-# longitude and latitude equal and important, could do PCA or just do interaction term
-# population unimportant
+
+# Choosing the best from the linear model
+reg.summary=summary(regfit.full)
+names(reg.summary)
+reg.summary$rsq
+par(mfrow=c(2,2))
+plot(reg.summary$rss,xlab="Number of Variables",ylab="RSS",type="l")
+plot(reg.summary$adjr2,xlab="Number of Variables",ylab="Adjusted RSq",type="l")
+# Find out the case with maximal adjusted R^2
+which.max(reg.summary$adjr2)
+# Draw points in the latest plot
+points(12,reg.summary$adjr2[12], col="red",cex=2,pch=20) #Look at graph to choose best value of k, i.e. highest adjRsq
+plot(reg.summary$cp,xlab="Number of Variables",ylab="Cp",type='l')
+which.min(reg.summary$cp)
+points(12,reg.summary$cp[10],col="red",cex=2,pch=20)
+plot(reg.summary$bic,xlab="Number of Variables",ylab="BIC",type='l')
+which.min(reg.summary$bic)
+points(which.min(reg.summary$bic),reg.summary$bic[which.min(reg.summary$bic)],col="red",cex=2,pch=20) #a better way
 
 
-# New fit
-data$bedroomsPerRoom <- data$aveBedrooms / data$aveRooms
-#Removing some of these
-#data$oceanProximity <- factor(data$oceanProximity, levels = setdiff(levels(data$oceanProximity), c("NEAR BAY", "ISLAND","NEAR OCEAN")))
-# need to do this in PCR or ridge regression
+```
 
 
-lm.fit <- lm(medianHouseValue~poly(medianIncome,3)+longitude+latitude+longitude:latitude +bedroomsPerRoom +oceanProximity +housingMedianAge,data = data) # change between data and data_unlev
+Best fit
+``` {r }
+
+
+
+
+```
+``` {r}
+
+library(leaps)
+#since can't call predict for regsubsets. doing the same thing as the for loop
+predict.regsubsets=function(object,newdata,id,...){ #... allows for other arguments to be passed into the function
+  form=as.formula(object$call[[2]])
+  mat=model.matrix(form,newdata)
+  coefi=coef(object,id=id)
+  xvars=names(coefi)
+  mat[,xvars]%*%coefi
+}
+
+```
+
+
+# Choosing the best subset for new linear model
+```{r, echo=FALSE}
+library(leaps)
+library(car)
+# k-fold CV
+#medianHouseValue~.-id-oceanProximity-medianIncome+log(medianIncome)+longitude:latitude+log(population)
+lm.fit <- lm(medianHouseValue~.-id-oceanProximity-aveRooms-aveBedrooms+longitude:latitude+log(population),data = data)
 summary(lm.fit)
-plot(lm.fit)
-deviance(lm.fit)
+nvmax <- length(coef(lm.fit)) - 1
 
-# Threshold for outliers
-threshold <- 2 * (length(coef(lm.fit)) + 1) / nrow(data)
+
+k=10
+set.seed(3)
+folds=sample(1:k,nrow(data),replace=TRUE)
+cv.errors=matrix(NA,k,nvmax, dimnames=list(NULL, paste(1:nvmax))) # NA means no data, NULL means no row names
+
+
+for(j in 1:k){
+  best.fit=regsubsets(medianHouseValue~.-id-oceanProximity-aveRooms-aveBedrooms+longitude:latitude+log(population),data = data[folds!=j,],nvmax=nvmax)
+  for(i in 1:nvmax){
+    pred=predict(best.fit,data[folds==j,],id=i)
+    cv.errors[j,i]=mean( (data$medianHouseValue[folds==j]-pred)^2)
+  }
+}
+mean.cv.errors=apply(cv.errors,2,mean)
+mean.cv.errors
+par(mfrow=c(1,1))
+best.model.size <- as.numeric(names(which.min(mean.cv.errors)))
+plot(mean.cv.errors,type='b')
+points(best.model.size, mean.cv.errors[best.model.size], col = "red", pch = 19, cex = 1.5)
+# Obtain the best subset model using the full data and CV selected id
+reg.best=regsubsets(medianHouseValue~.-id-oceanProximity-aveRooms-aveBedrooms+longitude:latitude+log(population),data = data, nvmax=nvmax)
+coef(reg.best,best.model.size)
+
+
+best.predictors = names(coef(reg.best, best.model.size))[-1]  # remove intercept
+# Create formula dynamically
+formula.best = as.formula(paste("medianHouseValue ~", paste(best.predictors, collapse = " + ")))
+
+# Fit the model using lm
+model.best = lm(formula.best, data = data)
+summary(model.best)
+vif(model.best,type = "predictor")
+
+# With oceanProximity
+new.formula = update(formula.best, . ~ . + oceanProximity)
+model.best = lm(new.formula, data = data)
+summary(model.best)
+vif(model.best,type = "predictor")
+
+
+#with oceanProximity is better
+
+plot(model.best)
+
 
 # Remove outliers
-data_unlev <- data[-c(5278),]
-
-
-regfit.full=regsubsets(medianHouseValue~poly(medianIncome,3)+longitude+latitude+longitude:latitude+bedroomsPerRoom +oceanProximity +housingMedianAge,data = data)
-summary(regfit.full)
-
-
-# bedroomsPerRoom is good, still iffy with long and lat. Need to do something else
-# play around more, also can do ridge, lasso and pcr maybe? - for oceanProximity to remove the irrelevant ones
+data_unlev <- data[c(7420,7421,7419),] # these are all island - ridge or lasso can get rid of this
 ```
 
 
-#For plots
-```{r, echo=FALSE}
+
+
+#Ridge regression
+
+```{r}
+
+library(glmnet)
+x = model.matrix(new.formula, data = data)[, -1]  # Remove intercept column
+y = data$medianHouseValue
+
+# Perform 10-fold cross-validation to find the best lambda
+set.seed(7)  
+cv.ridge = cv.glmnet(x, y, alpha = 0, nfolds = 10)
+
+# Extract best lambda (lambda.min gives lambda with minimum MSE)
+best.lambda = cv.ridge$lambda.min
+
+ridge.model = glmnet(x, y, alpha = 0, lambda = best.lambda)
+coef(ridge.model) #not very good!
+coef(model.best)
 
 ```
-
 
 
 
