@@ -4,62 +4,40 @@ author: "Omar, Eloise, Alina, Sue"
 date: "`r Sys.Date()`"
 output: pdf_document
 ---
-Testing again
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
 library(car)
+library(dplyr)
+library(ggplot2)
+library(car)
 ```
 
 
-
-
-#2.1 Descriptive analysis of the data set
+#2.1 Descriptive Analysis of the Data Set
 
 ```{r }
-data <- read.csv("Assignt1_data.csv")
+# Load the data 
+data <- read.csv("Assignt1_data.csv", header = TRUE)
 
-# Summary stuff
+# Summary Stas of the Original Data 
 str(data) 
-summary(data)
 head(data)
 dim(data) 
+summary(data)
 
-# NA's
-incomplete_rows <- data[!complete.cases(data), ] # these are all missing aveBedrooms.
-data_clean <- na.omit 
+# Cleaning data 
+sum(rowSums(is.na(data)) > 0) 
+# 190 out of 18640 rows with na values in aveBedrooms 
+clean_data <- na.omit(data) # remove na rows 
 
-
-# no duplicates
-library(dplyr) 
-data2 <- distinct(data) # no duplicates
-  
-
-
-# initial plots
-target_col <- "medianHouseValue"
-exclude <- c("id","oceanProximity",target_col)
-
-for (col in names(data)) {
-  if (!(col %in% exclude)) {
-    plot(data[[col]], data[[target_col]],
-         xlab = col,
-         ylab = target_col,
-         main = paste(col, "vs", target_col))
-  }
-}
+# Summary Stats 
+str(clean_data) 
+head(clean_data)
+dim(clean_data) 
+summary(clean_data)
 ```
-
-
-
-
-```{r}
-## Load the data 
-Data_0 <- read.csv("Assignt1_data.csv", header = TRUE) 
-View(Data_0)
-names(Data_0)
-```
-
 
 
 
