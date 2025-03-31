@@ -132,9 +132,6 @@ plot(lm.fit)
 
 ```
 
-
-
-
 2.2 Multiple linear regression
 
 ```{r }
@@ -168,6 +165,7 @@ round(cor_matrix, 2)
 # or can do interaction term?? This might be simpler. See which one is better after testing
 
 library(leaps)
+#test
 
 regfit.full=regsubsets(medianHouseValue~.-id,data = data,nvmax =12)
 summary(regfit.full)
