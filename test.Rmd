@@ -22,8 +22,8 @@ dim(data)
 data$oceanProximity <- as.factor(data$oceanProximity)
 
 # NA's
-incomplete_rows <- data[!complete.cases(data), ] # these are all missing aveBedrooms.
-data <- na.omit(data)
+incomplete_rows <- data[!complete.cases(data), ] # these are all missing aveBedrooms. Maybe just don't use this feature
+data <- na.omit(data) # can remove column aveBedrooms???
 rownames(data) <- 1:nrow(data) # need to do this otherwise can't remove outliers
 
 
@@ -140,8 +140,8 @@ plot(lm.fit)
 ```{r }
 # initial model
 # New fit
-data$bedroomsPerRoom <- data$aveBedrooms / data$aveRooms
-lm.fit <- lm(medianHouseValue~.-id-bedroomsPerRoom,data = data) # ID not a relevant predictor
+#data$bedroomsPerRoom <- data$aveBedrooms / data$aveRooms
+lm.fit <- lm(medianHouseValue~.-id-aveBedrooms,data = data) # ID not a relevant predictor
 summary(lm.fit)
 # population (population in particular) and island and near bay look iffy
 deviance(lm.fit)
@@ -195,13 +195,7 @@ points(which.min(reg.summary$bic),reg.summary$bic[which.min(reg.summary$bic)],co
 ```
 
 
-Best fit
-``` {r }
 
-
-
-
-```
 ``` {r}
 
 library(leaps)
@@ -219,11 +213,10 @@ predict.regsubsets=function(object,newdata,id,...){ #... allows for other argume
 
 # Choosing the best subset for new linear model
 ```{r, echo=FALSE}
-library(leaps)
+
 library(car)
 # k-fold CV
-#medianHouseValue~.-id-oceanProximity-medianIncome+log(medianIncome)+longitude:latitude+log(population)
-lm.fit <- lm(medianHouseValue~.-id-oceanProximity-aveRooms-aveBedrooms+longitude:latitude+log(population),data = data)
+lm.fit <- lm(medianHouseValue~.-id-oceanProximity-aveBedrooms+longitude:latitude+log(population),data = data)
 summary(lm.fit)
 nvmax <- length(coef(lm.fit)) - 1
 
@@ -235,7 +228,7 @@ cv.errors=matrix(NA,k,nvmax, dimnames=list(NULL, paste(1:nvmax))) # NA means no 
 
 
 for(j in 1:k){
-  best.fit=regsubsets(medianHouseValue~.-id-oceanProximity-aveRooms-aveBedrooms+longitude:latitude+log(population),data = data[folds!=j,],nvmax=nvmax)
+  best.fit=regsubsets(medianHouseValue~.-id-oceanProximity-aveBedrooms+longitude:latitude+log(population),data = data[folds!=j,],nvmax=nvmax)
   for(i in 1:nvmax){
     pred=predict(best.fit,data[folds==j,],id=i)
     cv.errors[j,i]=mean( (data$medianHouseValue[folds==j]-pred)^2)
@@ -248,7 +241,7 @@ best.model.size <- as.numeric(names(which.min(mean.cv.errors)))
 plot(mean.cv.errors,type='b')
 points(best.model.size, mean.cv.errors[best.model.size], col = "red", pch = 19, cex = 1.5)
 # Obtain the best subset model using the full data and CV selected id
-reg.best=regsubsets(medianHouseValue~.-id-oceanProximity-aveRooms-aveBedrooms+longitude:latitude+log(population),data = data, nvmax=nvmax)
+reg.best=regsubsets(medianHouseValue~.-id-oceanProximity-aveBedrooms+longitude:latitude+log(population),data = data, nvmax=nvmax)
 coef(reg.best,best.model.size)
 
 
@@ -289,17 +282,37 @@ x = model.matrix(new.formula, data = data)[, -1]  # Remove intercept column
 y = data$medianHouseValue
 
 # Perform 10-fold cross-validation to find the best lambda
-set.seed(7)  
-cv.ridge = cv.glmnet(x, y, alpha = 0, nfolds = 10)
+set.seed(7)
+lambda_grid <- 10^seq(4, -4, length = 100)  # From 10,000 down to 0.0001
+cv.ridge = cv.glmnet(x, y, alpha = 0,lambda = lambda_grid, nfolds = 10)
 
 # Extract best lambda (lambda.min gives lambda with minimum MSE)
 best.lambda = cv.ridge$lambda.min
 
 ridge.model = glmnet(x, y, alpha = 0, lambda = best.lambda)
-coef(ridge.model) #not very good!
-coef(model.best)
+coef(ridge.model) 
 
 ```
 
+``` {r}
+test_data <- data <- read.csv("Assignt1_data.csv")
+#test_data$bedroomsPerRoom <- test_data $aveBedrooms / test_data $aveRooms
+pred <- predict(model.best, newdata = test_data  )
+actual <- test_data$medianHouseValue
+mse <- mean((pred - actual)^2)
+mse
+sqrt(mse)
+
+test_matrix <- model.matrix(new.formula, data = test_data)[, -1]
+pred <- predict(ridge.model, s = best.lambda, newx = test_matrix)
+actual <- test_data$medianHouseValue
+mse <- mean((pred - actual)^2)
+mse
+
+# ridge is worse
+
+min(pred)
+sqrt(mse)
+```
 
 
