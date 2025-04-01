@@ -188,18 +188,36 @@ fit1 <- lm(clean_data$medianHouseValue ~. - id, data = clean_data)
 summary(fit1)
 ```
 
-### Residual plot etc 
 ```{r}
 par(mfrow = c(2,2))
 plot(fit1, cex = 0.1)
 ```
+
+### Residual Plot: 
+
+The residual plot shows that the points are not quite randomly scattered around zero. This means that the homoskedasiticity and linear assumption might be questionable. To address non-linearity, we can consider polynomial terms or interactions. 
+
+The funnel shape (the spread of residuals seems to increase as the fitted values increase) within the fitted value range (0, 400000) strengthens my doubt of heteroskedasticity. We may consider transforming some of our predictors later. 
+
+There are some outliers in the residuals that are far away from zero. These influential points may be high-leverage or outliers or both - should be investigated later. 
 ```{r}
-par(mfrow = c(1, 1)) # Lets look at these plots more closely 
- 
+par(mfrow = c(1, 1)) 
+options(scipen = 999) 
+plot(fit1, which = 1, cex = 0.2, pch = 16, cex.axis = 0.6,
+     main = "Residual Plot (Residual vs Fitted) of Fit1 (using all Predictors)") 
 ```
 
+### QQ Plot for Residuals: 
 
+A key assumption behind generalized linear model is that the error term is normally distributed. This is why t-statistics and F-statistics can be used in our previous testing. 
 
+T-stats are robust under some mild deviation from normality, but under extreme non-normality, these statistics become less reliable. 
+
+In our plot, the points deviates from the reference line (dashed line) for larger and smaller quantiles (roughly outside of this range: (-2, 1.5)), indicating non-normality (especially high skewness) and influence of outliers especially at the tails. 
+```{r}
+plot(fit1, which = 2, cex = 0.2, pch = 16, cex.axis = 0.8,
+     main = "(Normal) QQ Plot of Fit1 (using all Predictors)") 
+```
 
 ### Outliers 
 ```{r}
