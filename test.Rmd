@@ -10,7 +10,8 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 #2.1 Descriptive analysis of the data set
-
+ALWAYS RUN THIS ONE
+Load in data and clean
 ```{r }
 data <- read.csv("Assignt1_data.csv")
 
@@ -26,8 +27,10 @@ incomplete_rows <- data[!complete.cases(data), ] # these are all missing aveBedr
 data <- na.omit(data) 
 rownames(data) <- 1:nrow(data) 
 
+```
 
-
+# Exploratory analysis
+``` {r}
 #censoring
 data[order(-data$medianHouseValue), ]
 value <- 500001  # change to your target value
@@ -58,6 +61,7 @@ boxplot(medianHouseValue ~ oceanProximity, data = data,
 
 ```
 
+# More exploring
 Single linear regression
 
 ```{r }
@@ -133,7 +137,7 @@ plot(lm.fit)
 ```
 
 2.2 Multiple linear regression
-
+MUST RUN THIS
 ```{r }
 # initial model
 # New fit
@@ -192,7 +196,7 @@ points(which.min(reg.summary$bic),reg.summary$bic[which.min(reg.summary$bic)],co
 
 ```
 
-
+New function - Must run to run next chunk
 ``` {r}
 library(leaps)
 #since can't call predict for regsubsets. doing the same thing as the for loop
@@ -211,6 +215,9 @@ predict.regsubsets=function(object,newdata,id,...){ #... allows for other argume
 
 library(car)
 # k-fold CV
+# best so far
+# medianHouseValue~.-id-oceanProximity-aveBedrooms-aveRooms+bedroomsPerRoom+longitude:latitude+log(population)
+
 lm.fit <- lm(medianHouseValue~.-id-oceanProximity-aveBedrooms-aveRooms+bedroomsPerRoom+longitude:latitude+log(population),data = data)
 summary(lm.fit)
 nvmax <- length(coef(lm.fit)) - 1
@@ -248,7 +255,11 @@ formula.best = as.formula(paste("medianHouseValue ~", paste(best.predictors, col
 model.best = lm(formula.best, data = data)
 summary(model.best)
 vif(model.best,type = "predictor")
+```
 
+
+# Adding in oceanProximity
+``` {r}
 # With oceanProximity
 new.formula = update(formula.best, . ~ . + oceanProximity)
 model.best = lm(new.formula, data = data)
@@ -319,3 +330,7 @@ ridge_mse
 ```
 
 
+#with oceanProximity
+[1] 5184285121
+[1] 4985417116
+[1] 5003609492
