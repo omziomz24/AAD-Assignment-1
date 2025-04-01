@@ -62,10 +62,17 @@ hist(data_naomit$medianHouseValue,
      main = "Hostogram of Median House Value",
      breaks = 25)
 ```
-The boxplot clearly indicates that the Median House Value is right-skewed, with a longer tail on the higher end. Additionally, there are several outliers present at the upper extreme of the distribution
+The boxplot clearly indicates that the Median House Value is right-skewed, with a longer tail on the higher end. Additionally, there are several outliers present at the upper extreme of the distribution - 
 
+### Correlations 
+From the correlation matrix plot we can see that among all the predictors, Median House Value is most correlated with Median Income. This is pretty intuitive, as we expect high-income households purchasing more expensive houses. 
+
+There is little correlation between Median Housing Value and Median Income. 
+
+Longitude and Latitude are highly negatively correlated, while Average Rooms and Average Bedrooms are highly positively correlated. This multicollinearity can lead to issues such as unstable coefficient estimates and inflated standard errors, as the model struggles to distinguish the individual effects of highly correlated predictors. Consequently, the interpretability of the regression results is compromised.To mitigate this, we can remove one of the correlated variables, which will be discussed later, in section 2.2. 
+
+* Note that ID is not a relevant predictor, so we don't care about the correlation between ID and other variables. 
 ```{r}
-# Correlations 
 numeric.data <-  clean_data[sapply(clean_data, is.numeric)]
 head(numeric.data)
 cor_medianHouseValue <- cor(clean_data$medianHouseValue, 
@@ -177,7 +184,9 @@ ggplot(clean_data, aes(x = clean_data$longitude, y = clean_data$latitude)) +
 
 # 2.2 Multiple Linear Regression 
 
-### MLR Using all predictors (id is not a predictor)
+
+
+## MLR Using all predictors (id is not a predictor)
 
 The p-value of the F-test is practically zero, therefore we have sufficient evidence to reject the null hypothesis that all regression coefficients are zero. This means that the model has overall significance, and that at least one of the predictors are useful in explaning the variation in the response variable (i.e. medianHouseValue). 
 
@@ -220,20 +229,99 @@ plot(fit1, which = 2, cex = 0.2, pch = 16, cex.axis = 0.8,
 ```
 
 ### Outliers 
-```{r}
 
+Outlier identification: as a rule of thumb, we consider those whose studentised residual has a magnitude greater than 3 as outliers here. 
+
+However we cannot just simply remove the outliers in this case. This is because these outliers coule be attributable to model specification or other problems. We will see what we can do with the model selection and then can come back to this later. 
+```{r}
+residuals_fit1 <- residuals(fit1)
+stdresiduals_fit1 <- rstandard(fit1)
+outlier_row_number <- which(abs(stdresiduals_fit1) > 3)
+
+length(outlier_row_number) # gives how many outliers are there 
 ```
 
-### High Leverage Points 
-```{r}
+### High Leverage Points
 
+We will compute the leverage statistic hi and to see whether it is >> (p + 1)/n. Where p is the number of predictors in the model and n is the sample size. 
+
+Having 3,317 high leverage points out of 18,450 data points means that about 18% of the data has high leverage. This indicates that our regression line can change dramatically with small changes in the predictors. One possible reason is that we are overfitting the data - and a reason to this is having too many predictor variables. 
+```{r}
+leverage_values <- hatvalues(fit1)
+
+p_lvg <- length(coef(fit1)) 
+n_lvg <- nrow(clean_data) 
+threshold_lvg <- (p_lvg + 1) / n_lvg
+
+highlvg_row_number <- which(leverage_values > threshold_lvg)
+# highlvg_row_number 
+length(highlvg_row_number)
+
+plot(leverage_values, type = "h", col = "blue")
+abline(h = 2 * mean(leverage_values), col = "red")
 ```
 
-## Collinearity 
-The arbitrary threshold of severe collinearity is vif greater or equal to 5. Here, 
-all the predictors are shown to have a non-severe VIF. 
+### Collinearity 
+The arbitrary threshold of severe collinearity is VIF greater or equal to 5. Here, 
+all the predictors are shown to have a non-severe VIF. However, Longitude and Latitude shows relatively high VIF comparing to other predictors - a cause of this is the high correlation between the two. We may consider using one of them instead of both in the model. 
 ```{r}
 vif(fit1_MHV)
+```
+
+
+
+## Making improvements 
+
+If we drop population: 
+```{r}
+fit2 <- lm(clean_data$medianHouseValue ~. - id - population, data = clean_data) 
+summary(fit2) 
+# no obvious changes here in terms of t and F test results, Std Error and Estimate 
+```
+
+### Collinearity
+If we use Latitude instead of both Longtitude and Latitude: 
+```{r}
+fit3 <- lm(clean_data$medianHouseValue ~. - id - population - longitude, 
+           data = clean_data) 
+summary(fit3) 
+# Latitude become insiginificant this time - try interaction 
+```
+If we include an interaction term, and keep both primary variables (Longitude and Latitude). 
+```{r}
+fit4 <- lm(clean_data$medianHouseValue ~. + longitude:latitude - id - population, 
+           data = clean_data) 
+summary(fit4) 
+```
+On top of interaction, we consider using aveRooms instead of both aveRooms and aveBedrooms: 
+```{r}
+fit5 <- lm(clean_data$medianHouseValue ~. + longitude:latitude - id - population - aveBedrooms, 
+           data = clean_data) 
+summary(fit5) 
+```
+What if interaction? 
+```{r}
+fit6 <- lm(clean_data$medianHouseValue ~. + longitude:latitude + aveRooms:aveBedrooms - id - population, 
+           data = clean_data) 
+summary(fit6) 
+```
+
+### Heteroskedsiticity & Skewness (i.e. Non-normality)
+All terms are 
+```{r}
+fit7 <- lm(log(medianHouseValue) ~ .
+           + longitude:latitude + aveRooms:aveBedrooms - id - population, 
+           data = clean_data)
+summary(fit7)
+```
+
+## 3 most significant predictors 
+```{r}
+p_values_fit7 <- summary(fit7)$coefficients[, 4]
+p_values_fit7 <- p_values_fit7[-1] # exlcude the intercept term 
+sorted_p_values_fit7 <- sort(p_values_fit7)
+top_3_predictors_fit7 <- names(sorted_p_values_fit7)[1:3]
+top_3_predictors_fit7
 ```
 
 
