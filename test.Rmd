@@ -16,8 +16,7 @@ Load in data and clean
 data <- read.csv("Assignt1_data.csv")
 
 # Summary stuff
-#str(data) 
-#summary(data)
+
 head(data)
 dim(data) 
 data$oceanProximity <- as.factor(data$oceanProximity)
@@ -32,12 +31,18 @@ rownames(data) <- 1:nrow(data)
 # Exploratory analysis
 ``` {r}
 #censoring
+
+#make a comment from here:
+summary(data)
+
+#other things are also censored
+
 data[order(-data$medianHouseValue), ]
 value <- 500001  # change to your target value
 percentage <- mean(data$medianHouseValue == value) * 100
 cat("Percentage of data with medianHouseValue =", value, "is", percentage, "%\n")
 
-
+# Probably not super necessary to include
 # initial plots
 target_col <- "medianHouseValue"
 exclude <- c("id","oceanProximity",target_col)
@@ -65,78 +70,22 @@ boxplot(medianHouseValue ~ oceanProximity, data = data,
 Single linear regression
 
 ```{r }
-#Do each linear regression separately and view plots
-#longitude, clearly non-linear poly?
-lm.fit <- lm(medianHouseValue~longitude,data = data) 
-summary(lm.fit)
-plot(lm.fit)
-
-# latitude, again non-linear poly?
-lm.fit <- lm(medianHouseValue~latitude,data = data) 
-summary(lm.fit)
-plot(lm.fit)
-
-#housing median age - good fit for first graph
-lm.fit <- lm(medianHouseValue~housingMedianAge,data = data) 
-summary(lm.fit)
-plot(lm.fit)
-
-#aveRooms, definitely non-linear, big issue with high leverage points
-lm.fit <- lm(medianHouseValue~aveRooms,data = data) 
-summary(lm.fit)
-plot(lm.fit)
-
-
-#aveBedrooms, issue with high leverage points
-lm.fit <- lm(medianHouseValue~aveBedrooms,data = data) 
-summary(lm.fit)
-plot(lm.fit)
-
-#population, issues with leverage, heterscedascity
-lm.fit <- lm(medianHouseValue~population,data = data) 
-summary(lm.fit)
-plot(lm.fit)
-
-#medianIncome non-linear and heterscedascity, some influential points too
-lm.fit <- lm(medianHouseValue~medianIncome,data = data) 
-summary(lm.fit)
-plot(lm.fit)
-
-#oceanProximity catergorical and need to play around with this a bit
-lm.fit <- lm(medianHouseValue~oceanProximity,data = data) 
-summary(lm.fit)
-plot(lm.fit)
-
-# Keep medianIncome the same
-#playing around a bit
-#medianIncome non-linear and heterscedascity, some influential points too
-#better
-lm.fit <- lm(medianHouseValue~log(medianIncome),data = data) 
-summary(lm.fit)
-plot(lm.fit)
-
-#poly 2 looks pretty good, better than log
-lm.fit <- lm(medianHouseValue~poly(medianIncome,2),data = data) 
-summary(lm.fit)
-plot(lm.fit)
-
-
-
 
 ## MOST IMPORTANT BITS
 
 #looks way better
 #population, issues with leverage, heterscedascity
+lm.fit <- lm(medianHouseValue~population,data = data) 
+summary(lm.fit)
+plot(lm.fit)
+
 lm.fit <- lm(medianHouseValue~log(population),data = data) 
 summary(lm.fit)
 plot(lm.fit)
 
 
-lm.fit <- lm(medianHouseValue~bedroomsPerRoom,data = data) 
-summary(lm.fit)
-plot(lm.fit)
 
-
+# Point out cluster around LA and SF
 
 plot(data$longitude, data$latitude, 
      xlab = "Longitude", ylab = "Latitude", 
@@ -158,6 +107,40 @@ text(-122.42, 37.77, labels = "SF", pos = 3, col = "blue")
 MUST RUN THIS
 ```{r }
 # initial model
+#reinitalise data just in case
+data <- read.csv("Assignt1_data.csv")
+data <- na.omit(data) 
+
+lm.fit.og <- lm(medianHouseValue~.,data = data) # ID not a relevant predictor
+summary(lm.fit,og)
+# population (population in particular) and island and near bay look iffy
+deviance(lm.fit.og)
+contrasts(data$oceanProximity)
+
+
+plot(lm.fit.og)
+# some outliers/leverage points
+# clear heteroscedasticity
+
+
+# Checking Collinearity
+library(car)
+vif(lm.fit.og)
+
+# Correlation matrix
+numeric_vars <- data[sapply(data, is.numeric)]
+cor_matrix <- cor(numeric_vars, use = "complete.obs")
+round(cor_matrix, 2)
+
+#ideas for model selection
+regfit=regsubsets(medianHouseValue~.,data = data,nvmax =length(coef(lm.fit.og)))
+#summary(regfit.full)
+
+
+
+```
+# New fit extra predictors
+``` {r}
 # New fit
 data$bedroomsPerRoom <- data$aveBedrooms / data$aveRooms
 #distance to centre
@@ -202,60 +185,12 @@ data$dirToSF <- NULL
 
 data$cityProximityScore <- 1 / (1 + data$distToLA) + 1 / (1 + data$distToSF)
 
-
-lm.fit <- lm(medianHouseValue~.-id-bedroomsPerRoom-distToCenter-incomePerRoom-distToSF-distToSF-sinDirToSF-sinDirToLA-cosDirToLA-cosDirToSF-cityProximityScore,data = data) # ID not a relevant predictor
-summary(lm.fit)
-# population (population in particular) and island and near bay look iffy
-deviance(lm.fit)
-contrasts(data$oceanProximity)
-
-
-plot(lm.fit)
-# some outliers/leverage points
-# clear heteroscedasticity
-
-
-# Checking Collinearity
-library(car)
-vif(lm.fit)
-
-# Correlation matrix
-numeric_vars <- data[sapply(data, is.numeric)]
-cor_matrix <- cor(numeric_vars, use = "complete.obs")
-round(cor_matrix, 2)
-
-#Long and lat highly correlated, so are ave rooms and ave bedrooms
-# can create a bedrooms to rooms ratio and include that. Or just exclude one
-# also test exclude the houses with like 40 rooms, could be leverage point
-# or can do interaction term?? This might be simpler. See which one is better after testing
-
-library(leaps)
-#test
-
-regfit.full=regsubsets(medianHouseValue~.-id,data = data,nvmax =12)
-summary(regfit.full)
-
-
-# Choosing the best from the linear model
-reg.summary=summary(regfit.full)
-names(reg.summary)
-reg.summary$rsq
-par(mfrow=c(2,2))
-plot(reg.summary$rss,xlab="Number of Variables",ylab="RSS",type="l")
-plot(reg.summary$adjr2,xlab="Number of Variables",ylab="Adjusted RSq",type="l")
-# Find out the case with maximal adjusted R^2
-which.max(reg.summary$adjr2)
-# Draw points in the latest plot
-points(12,reg.summary$adjr2[12], col="red",cex=2,pch=20) #Look at graph to choose best value of k, i.e. highest adjRsq
-plot(reg.summary$cp,xlab="Number of Variables",ylab="Cp",type='l')
-which.min(reg.summary$cp)
-points(12,reg.summary$cp[10],col="red",cex=2,pch=20)
-plot(reg.summary$bic,xlab="Number of Variables",ylab="BIC",type='l')
-which.min(reg.summary$bic)
-points(which.min(reg.summary$bic),reg.summary$bic[which.min(reg.summary$bic)],col="red",cex=2,pch=20) #a better way
-
+data$cityProximityScore <- 1 / (1 + data$distToLA) + 1 / (1 + data$distToSF)
+data$isCensored <- as.integer(data$medianHouseValue >= 500001)
 
 ```
+
+
 
 New function - Must run to run next chunk
 ``` {r}
@@ -278,7 +213,7 @@ library(car)
 # k-fold CV
 
 
-lm.fit <- lm(medianHouseValue~.-id-oceanProximity-aveBedrooms-aveRooms-population+bedroomsPerRoom+longitude:latitude+log(population)+I(medianIncome^2)+I(medianIncome^3)+I(housingMedianAge^2)+medianIncome:log(population)+bedroomsPerRoom:medianIncome+medianIncome:housingMedianAge+distToCenter:medianIncome+latitude:incomePerRoom+bedroomsPerRoom:distToLA+I(medianIncome/housingMedianAge)+I(latitude^2)+I(longitude^2)+I(latitude^3)+I(longitude^3)+log(incomePerRoom)+log(medianIncome/distToCenter)+housingMedianAge:incomePerRoom+cityProximityScore:housingMedianAge+cityProximityScore:bedroomsPerRoom+medianIncome:cosDirToLA+medianIncome:sinDirToLA+medianIncome:cosDirToSF+medianIncome:sinDirToSF,data = data)
+lm.fit <- lm(medianHouseValue~.-id-oceanProximity-aveBedrooms-aveRooms-population+bedroomsPerRoom+longitude:latitude+log(population)+I(medianIncome^2)+I(medianIncome^3)+I(housingMedianAge^2)+medianIncome:log(population)+bedroomsPerRoom:medianIncome+medianIncome:housingMedianAge+distToCenter:medianIncome+latitude:incomePerRoom+bedroomsPerRoom:distToLA+I(medianIncome/housingMedianAge)+I(latitude^2)+I(longitude^2)+I(latitude^3)+I(longitude^3)+log(incomePerRoom)+log(medianIncome/distToCenter)+housingMedianAge:incomePerRoom+cityProximityScore:housingMedianAge+cityProximityScore:bedroomsPerRoom+medianIncome:cosDirToLA+medianIncome:sinDirToLA+medianIncome:cosDirToSF+medianIncome:sinDirToSF+medianIncome:isCensored,data = data)
 summary(lm.fit)
 nvmax <- length(coef(lm.fit)) - 1
 
@@ -290,7 +225,7 @@ cv.errors=matrix(NA,k,nvmax, dimnames=list(NULL, paste(1:nvmax))) # NA means no 
 
 
 for(j in 1:k){
-  best.fit=regsubsets(medianHouseValue~.-id-oceanProximity-aveBedrooms-aveRooms-population+bedroomsPerRoom+longitude:latitude+log(population)+I(medianIncome^2)+I(medianIncome^3)+I(housingMedianAge^2)+medianIncome:log(population)+bedroomsPerRoom:medianIncome+medianIncome:housingMedianAge+distToCenter:medianIncome+latitude:incomePerRoom+bedroomsPerRoom:distToLA+I(medianIncome/housingMedianAge)+I(latitude^2)+I(longitude^2)+I(latitude^3)+I(longitude^3)+log(incomePerRoom)+log(medianIncome/distToCenter)+housingMedianAge:incomePerRoom+cityProximityScore:housingMedianAge+cityProximityScore:bedroomsPerRoom+medianIncome:cosDirToLA+medianIncome:sinDirToLA+medianIncome:cosDirToSF+medianIncome:sinDirToSF,data = data[folds!=j,],nvmax=nvmax)
+  best.fit=regsubsets(medianHouseValue~.-id-oceanProximity-aveBedrooms-aveRooms-population+bedroomsPerRoom+longitude:latitude+log(population)+I(medianIncome^2)+I(medianIncome^3)+I(housingMedianAge^2)+medianIncome:log(population)+bedroomsPerRoom:medianIncome+medianIncome:housingMedianAge+distToCenter:medianIncome+latitude:incomePerRoom+bedroomsPerRoom:distToLA+I(medianIncome/housingMedianAge)+I(latitude^2)+I(longitude^2)+I(latitude^3)+I(longitude^3)+log(incomePerRoom)+log(medianIncome/distToCenter)+housingMedianAge:incomePerRoom+cityProximityScore:housingMedianAge+cityProximityScore:bedroomsPerRoom+medianIncome:cosDirToLA+medianIncome:sinDirToLA+medianIncome:cosDirToSF+medianIncome:sinDirToSF+medianIncome:isCensored,data = data[folds!=j,],nvmax=nvmax)
   for(i in 1:nvmax){
     pred=predict(best.fit,data[folds==j,],id=i)
     cv.errors[j,i]=mean( (data$medianHouseValue[folds==j]-pred)^2)
@@ -303,7 +238,7 @@ best.model.size <- as.numeric(names(which.min(mean.cv.errors)))
 plot(mean.cv.errors,type='b')
 points(best.model.size, mean.cv.errors[best.model.size], col = "red", pch = 19, cex = 1.5)
 # Obtain the best subset model using the full data and CV selected id
-reg.best=regsubsets(medianHouseValue~.-id-oceanProximity-aveBedrooms-aveRooms-population+bedroomsPerRoom+longitude:latitude+log(population)+I(medianIncome^2)+I(medianIncome^3)+I(housingMedianAge^2)+medianIncome:log(population)+bedroomsPerRoom:medianIncome+medianIncome:housingMedianAge+distToCenter:medianIncome+latitude:incomePerRoom+bedroomsPerRoom:distToLA+I(medianIncome/housingMedianAge)+I(latitude^2)+I(longitude^2)+I(latitude^3)+I(longitude^3)+log(incomePerRoom)+log(medianIncome/distToCenter)+housingMedianAge:incomePerRoom+cityProximityScore:housingMedianAge+cityProximityScore:bedroomsPerRoom+medianIncome:cosDirToLA+medianIncome:sinDirToLA+medianIncome:cosDirToSF+medianIncome:sinDirToSF,data = data, nvmax=nvmax)
+reg.best=regsubsets(medianHouseValue~.-id-oceanProximity-aveBedrooms-aveRooms-population+bedroomsPerRoom+longitude:latitude+log(population)+I(medianIncome^2)+I(medianIncome^3)+I(housingMedianAge^2)+medianIncome:log(population)+bedroomsPerRoom:medianIncome+medianIncome:housingMedianAge+distToCenter:medianIncome+latitude:incomePerRoom+bedroomsPerRoom:distToLA+I(medianIncome/housingMedianAge)+I(latitude^2)+I(longitude^2)+I(latitude^3)+I(longitude^3)+log(incomePerRoom)+log(medianIncome/distToCenter)+housingMedianAge:incomePerRoom+cityProximityScore:housingMedianAge+cityProximityScore:bedroomsPerRoom+medianIncome:cosDirToLA+medianIncome:sinDirToLA+medianIncome:cosDirToSF+medianIncome:sinDirToSF+medianIncome:isCensored,data = data, nvmax=nvmax)
 coef(reg.best,best.model.size)
 
 
@@ -324,7 +259,7 @@ regfit <- regsubsets(formula.best,data = data,nvmax =length(coef(model.best)))
 # With oceanProximity
 # best so far
 #oceanProximity+oceanProximity:medianIncome+housingMedianAge:oceanProximity+log(population):oceanProximity+latitude
-new.formula = update(formula.best, . ~ . + oceanProximity + oceanProximity:distToCenter +oceanProximity:medianIncome)
+new.formula = update(formula.best, . ~ . + oceanProximity +oceanProximity:medianIncome + oceanProximity:distToCenter + oceanProximity:incomePerRoom)
 model.best = lm(new.formula, data = data)
 
 summary(model.best)
@@ -333,11 +268,11 @@ summary(model.best)
 
 #with oceanProximity is better
 
-#plot(model.best)
+plot(model.best)
 
 names(coef(model.best))
 # Remove outliers
-#data_unlev <- data[c(7419),] # these are all island - ridge or lasso can get rid of this
+data_unlev <- data[-c(7418,7420),] # these are all island - ridge or lasso can get rid of this
 
 #data[data$oceanProximity == "ISLAND",]
 #regfit.full=regsubsets(new.formula,data = data,nvmax =length(coef(model.best)))
@@ -371,68 +306,7 @@ coef(ridge.model)
 
 ```
 
-```{r}
 
-# LASSO PLR
-pca_result <- prcomp(x, center = TRUE, scale. = TRUE)
-explained_var <- cumsum(pca_result$sdev^2) / sum(pca_result$sdev^2)
-n_components <- which(explained_var >= 0.95)[1]
-x_pca <- pca_result$x[, 1:n_components]
-
-
-set.seed(17)
-lambda_grid <- 10^seq(4, -4, length = 100)  # From 10,000 down to 0.0001
-cv.lasso = cv.glmnet(x_pca, y, alpha = 1,lambda = lambda_grid, nfolds = 10)
-
-# Extract best lambda (lambda.min gives lambda with minimum MSE)
-best.lambda.pca = cv.lasso$lambda.1se
-
-lasso.pca.model = glmnet(x_pca, y, alpha = 1, lambda = best.lambda.pca)
-coef(lasso.pca.model) 
-
-# Lasso PLS
-set.seed(12)
-plsr_model <- plsr(new.formula, data = data, scale = TRUE, validation = "CV")
-summary(plsr_model)
-msep_vals <- RMSEP(plsr_model)$val[1, 1, ]  # Extract MSEP values
-n_comp <- which.min(msep_vals)  # Index of lowest MSEP
-x_pls <- scores(plsr_model)[, 1:pmin(n_comp,ncol(scores(plsr_model)))]
-y <- data$medianHouseValue
-
-# Perform 10-fold cross-validation to find the best lambda
-set.seed(15)
-lambda_grid <- 10^seq(4, -4, length = 100)  # From 10,000 down to 0.0001
-cv.lasso = cv.glmnet(x_pls, y, alpha = 1,lambda = lambda_grid, nfolds = 10)
-
-# Extract best lambda (lambda.min gives lambda with minimum MSE)
-best.lambda.pls = cv.lasso$lambda.1se
-
-lasso.pls.model = glmnet(x_pls, y, alpha = 1, lambda = best.lambda.pls)
-coef(lasso.pls.model) 
-
-
-
-# Lasso PLS
-set.seed(12)
-plsr_model <- plsr(new.formula, data = data, scale = TRUE, validation = "CV")
-summary(plsr_model)
-msep_vals <- RMSEP(plsr_model)$val[1, 1, ]  # Extract MSEP values
-n_comp <- which.min(msep_vals)  # Index of lowest MSEP
-x_pls <- scores(plsr_model)[, 1:pmin(n_comp,ncol(scores(plsr_model)))]
-y <- data$medianHouseValue
-
-# Perform 10-fold cross-validation to find the best lambda
-set.seed(15)
-lambda_grid <- 10^seq(4, -4, length = 100)  # From 10,000 down to 0.0001
-cv.lasso = cv.glmnet(x_pls, y, alpha = 1,lambda = lambda_grid, nfolds = 10)
-
-# Extract best lambda (lambda.min gives lambda with minimum MSE)
-best.lambda.pls = cv.lasso$lambda.1se
-
-lasso.pls.model = glmnet(x_pls, y, alpha = 1, lambda = best.lambda.pls)
-coef(lasso.pls.model) 
-
-```
 
 ``` {r}
 
@@ -468,19 +342,11 @@ test_data$dirToSF <- NULL
 
 test_data$cityProximityScore <- 1 / (1 + test_data$distToLA) + 1 / (1 + test_data$distToSF)
 
-
-lm.fit <- lm(medianHouseValue~.-id-bedroomsPerRoom-distToCenter-incomePerRoom-distToSF-distToSF-sinDirToSF-sinDirToLA-cosDirToLA-cosDirToSF-cityProximityScore,data = data) # ID not a relevant predictor
-
-
-
-
+test_data$isCensored <- as.integer(test_data$medianHouseValue >= 500001)
 actual <- test_data$medianHouseValue
 
-
-pred <- pmax(pmin(pred,500001),14999)
 #OG
-lm.fit <- lm(medianHouseValue~.-id-bedroomsPerRoom-distToCenter-incomePerRoom-distToSF-distToSF,data = data)
-pred <- predict(lm.fit, newdata = test_data  )
+pred <- predict(lm.fit.og, newdata = test_data  )
 pred <- pmax(pmin(pred,500001),14999)
 og_mse <- mean((pred - actual)^2)
 og_mse
@@ -505,43 +371,12 @@ ridge_mse
 
 
 # Best so far with censoring
-[1] 4548677455
-[1] 3763439107
-[1] 3856612972
+[1] 4894747643
+[1] 2911083066
+[1] 3001812504
 
 
 
-```{r}
-
-#lasso pcr
-x_new <- model.matrix(new.formula, data = test_data)[, -1]
-x_new_scaled <- scale(x_new, center = pca_result$center, scale = pca_result$scale)
-x_new_pca <- x_new_scaled %*% pca_result$rotation
-x_new_pca <- x_new_pca[, 1:n_components]
-
-pred<- predict(lasso.pca.model, s = best.lambda.pca, newx = x_new_pca)
-
-lasso_pca_mse <- mean((pred - actual)^2)
-lasso_pca_mse
-
-
-# lasso pls
-# Ensure oceanProximity in test_data is a factor with same levels
-test_data$oceanProximity <- factor(test_data$oceanProximity, levels = levels(data$oceanProximity))
-
-X_test_pls <- predict(plsr_model, newdata = test_data, type = "scores")[, 1:pmin(n_comp,ncol(scores(plsr_model)))]
-
-
-# b. Predict using LASSO model
-pred <- as.vector(predict(lasso.pls.model, newx = X_test_pls))
-
-
-lasso_pls_mse <- mean((pred - actual)^2)
-lasso_pls_mse
-
-
-
-```
 
 
 
