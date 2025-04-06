@@ -5,26 +5,65 @@ date: "`r Sys.Date()`"
 output: pdf_document
 ---
 
+Content: \ 
 
+1 Descriptive analysis of the data set\ 
+ 1.1 Data loading and cleaning \ 
+ 1.2 Preliminary analysis on the data \ 
+ 
+2 Multiple linear regression 
+ 2.1 Initial MLR model using all appropriate predictors \ 
+ 2.2 Discussion of initial Model \ 
+ 2.3 Checking issues in the initial model \ 
+  2.3.1 \ 
+  2.3.2  \ 
+  2.3.3 \ 
+  2.3.4 .... \ 
+ 2.4 Model improvements \ 
+ 2.5 Three most significant variables \ 
+ 
+3 Model Performance: initial model vs improved model \ 
+ 3.1 Training MSE \ 
+  3.1.1 Training MSE of the initial model \ 
+  3.1.2 Training MSE of the improved model \ 
+ 3.2 Estimating testing error using the 80-20 split validation set approach \ 
+ 3.3 Estimating testing error using 5-fold cross validation \ 
+ 3.4 Estimating testing error using LOOCV \ 
+ 3.5 Conclusion: whether the final MLR model better than the initial \ 
 
-
-Testing again
+4 Prediction competition \ 
+ 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+# load relevant libraries: 
+library(car)
+library(dplyr)
+library(ggplot2)
+library(car)
+library(corrplot) # for correlation plot 
+library(leaps) # for Best Subset Selection 
 ```
 
-#2.1 Descriptive analysis of the data set
-ALWAYS RUN THIS ONE
-Load in data and clean
-```{r }
-data <- read.csv("Assignt1_data.csv")
 
-# Summary stuff
-#str(data) 
-#summary(data)
+# 1 Descriptive analysis of the data set
+
+```{r}
+data <- read.csv("Assignt1_data.csv") 
+
+# str(data) 
+# summary(data)
 head(data)
 dim(data) 
 data$oceanProximity <- as.factor(data$oceanProximity)
+```
+
+ALWAYS RUN THIS ONE
+Load in data and clean
+```{r }
+
+
+# Summary stuff
+
 
 # NA's
 incomplete_rows <- data[!complete.cases(data), ] # these are all missing aveBedrooms. Maybe just don't use this feature
@@ -34,14 +73,16 @@ rownames(data) <- 1:nrow(data)
 ```
 
 # Exploratory analysis
-``` {r}
+
+```{r}
 #censoring
 data[order(-data$medianHouseValue), ]
 value <- 500001  # change to your target value
 percentage <- mean(data$medianHouseValue == value) * 100
 cat("Percentage of data with medianHouseValue =", value, "is", percentage, "%\n")
+```
 
-
+```{r}
 # initial plots
 target_col <- "medianHouseValue"
 exclude <- c("id","oceanProximity",target_col)
@@ -54,6 +95,12 @@ for (col in names(data)) {
          main = paste(col, "vs", target_col))
   }
 }
+```
+
+
+
+
+```{r}
 # For qualitative variable
 boxplot(medianHouseValue ~ oceanProximity, data = data,
         main = "Median House Value by Ocean Proximity",
@@ -62,8 +109,12 @@ boxplot(medianHouseValue ~ oceanProximity, data = data,
         col = "lightblue")
 
 # Need to include more stuff, very basic here
-
 ```
+
+
+
+
+
 
 # More exploring
 Single linear regression
