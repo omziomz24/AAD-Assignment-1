@@ -45,6 +45,9 @@ library(leaps) # for Best Subset Selection
 ```
 
 
+
+---------------------------------------------------------------------------------
+
 # 1 Descriptive analysis of the data set
 
 ```{r}
