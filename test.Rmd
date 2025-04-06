@@ -4,6 +4,10 @@ author: "Omar, Eloise, Alina, Sue"
 date: "`r Sys.Date()`"
 output: pdf_document
 ---
+
+
+
+
 Testing again
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -189,7 +193,7 @@ data$distToSF <- apply(data[, c("longitude", "latitude")], 1, function(coord) {
 data$dirToLA <- atan2(data$latitude - la_coords[2], data$longitude - la_coords[1])
 data$dirToSF <- atan2(data$latitude - sf_coords[2], data$longitude - sf_coords[1])
 
-# Encode directions using sin and cos
+# Encode directions using dsin and cos
 data$cosDirToLA <- cos(data$dirToLA)
 data$sinDirToLA <- sin(data$dirToLA)
 
@@ -204,7 +208,7 @@ data$cityProximityScore <- 1 / (1 + data$distToLA) + 1 / (1 + data$distToSF)
 
 
 lm.fit <- lm(medianHouseValue~.-id-bedroomsPerRoom-distToCenter-incomePerRoom-distToSF-distToSF-sinDirToSF-sinDirToLA-cosDirToLA-cosDirToSF-cityProximityScore,data = data) # ID not a relevant predictor
-summary(lm.fit)
+summary(lm.fit)y
 # population (population in particular) and island and near bay look iffy
 deviance(lm.fit)
 contrasts(data$oceanProximity)
