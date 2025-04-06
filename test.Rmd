@@ -13,6 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ALWAYS RUN THIS ONE
 Load in data and clean
 ```{r }
+options(scipen=999)
 data <- read.csv("Assignt1_data.csv")
 
 # Summary stuff
@@ -250,8 +251,8 @@ formula.best = as.formula(paste("medianHouseValue ~", paste(best.predictors, col
 # Fit the model using lm
 model.best = lm(formula.best, data = data)
 summary(model.best)
-vif(model.best,type = "predictor")
-regfit <- regsubsets(formula.best,data = data,nvmax =length(coef(model.best)))
+#vif(model.best,type = "predictor")
+#regfit <- regsubsets(formula.best,data = data,nvmax =length(coef(model.best)))
 ```
 
 
@@ -370,11 +371,10 @@ ridge_mse
 
 ```
 
-
-# Best so far with censoring
-[1] 4894747643
-[1] 2911083066
-[1] 3001812504
+# Best with censoring
+[1] 4932048361
+[1] 2909000329
+[1] 2995298062
 
 
 
