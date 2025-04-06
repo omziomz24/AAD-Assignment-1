@@ -110,9 +110,10 @@ MUST RUN THIS
 #reinitalise data just in case
 data <- read.csv("Assignt1_data.csv")
 data <- na.omit(data) 
+data$oceanProximity <- as.factor(data$oceanProximity)
 
 lm.fit.og <- lm(medianHouseValue~.,data = data) # ID not a relevant predictor
-summary(lm.fit,og)
+summary(lm.fit.og)
 # population (population in particular) and island and near bay look iffy
 deviance(lm.fit.og)
 contrasts(data$oceanProximity)
