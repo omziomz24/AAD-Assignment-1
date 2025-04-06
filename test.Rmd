@@ -17,7 +17,7 @@ data <- read.csv("Assignt1_data.csv")
 
 # Summary stuff
 #str(data) 
-summary(data)
+#summary(data)
 head(data)
 dim(data) 
 data$oceanProximity <- as.factor(data$oceanProximity)
@@ -121,6 +121,8 @@ summary(lm.fit)
 plot(lm.fit)
 
 
+
+
 ## MOST IMPORTANT BITS
 
 #looks way better
@@ -133,6 +135,22 @@ plot(lm.fit)
 lm.fit <- lm(medianHouseValue~bedroomsPerRoom,data = data) 
 summary(lm.fit)
 plot(lm.fit)
+
+
+
+plot(data$longitude, data$latitude, 
+     xlab = "Longitude", ylab = "Latitude", 
+     main = "California Housing Data with LA and SF", 
+     pch = 20, col = "grey")
+
+# Add LA point
+points(-118.24, 34.05, col = "red", pch = 19, cex = 1.5)
+text(-118.24, 34.05, labels = "LA", pos = 3, col = "red")
+
+# Add SF point
+points(-122.42, 37.77, col = "blue", pch = 19, cex = 1.5)
+text(-122.42, 37.77, labels = "SF", pos = 3, col = "blue")
+
 
 ```
 
@@ -150,7 +168,42 @@ data$distToCenter <- sqrt((data$latitude - center_lat)^2 + (data$longitude - cen
 
 data$incomePerRoom = data$medianIncome / data$aveRooms
 
-lm.fit <- lm(medianHouseValue~.-id-bedroomsPerRoom-distToCenter-incomePerRoom,data = data) # ID not a relevant predictor
+# Dist from LA and SF
+library(geosphere)
+# Need to reference this
+la_coords <- c(-118.24, 34.05)   # (longitude, latitude)
+sf_coords <- c(-122.42, 37.77)
+
+# Add distance to LA
+data$distToLA <- apply(data[, c("longitude", "latitude")], 1, function(coord) {
+  distGeo(coord, la_coords) / 1000  # convert meters to km
+})
+
+#Add distance to SF
+data$distToSF <- apply(data[, c("longitude", "latitude")], 1, function(coord) {
+  distGeo(coord, sf_coords) / 1000
+})
+
+
+# Compute direction angles
+data$dirToLA <- atan2(data$latitude - la_coords[2], data$longitude - la_coords[1])
+data$dirToSF <- atan2(data$latitude - sf_coords[2], data$longitude - sf_coords[1])
+
+# Encode directions using sin and cos
+data$cosDirToLA <- cos(data$dirToLA)
+data$sinDirToLA <- sin(data$dirToLA)
+
+data$cosDirToSF <- cos(data$dirToSF)
+data$sinDirToSF <- sin(data$dirToSF)
+
+# Remove intermediate angle variables
+data$dirToLA <- NULL
+data$dirToSF <- NULL
+
+data$cityProximityScore <- 1 / (1 + data$distToLA) + 1 / (1 + data$distToSF)
+
+
+lm.fit <- lm(medianHouseValue~.-id-bedroomsPerRoom-distToCenter-incomePerRoom-distToSF-distToSF-sinDirToSF-sinDirToLA-cosDirToLA-cosDirToSF-cityProximityScore,data = data) # ID not a relevant predictor
 summary(lm.fit)
 # population (population in particular) and island and near bay look iffy
 deviance(lm.fit)
@@ -223,12 +276,9 @@ predict.regsubsets=function(object,newdata,id,...){ #... allows for other argume
 
 library(car)
 # k-fold CV
-# best so far
-#medianHouseValue~.-id-oceanProximity-aveBedrooms-aveRooms-population+bedroomsPerRoom+longitude:latitude+log(population)+I(medianIncome^2)+I(medianIncome^3)+I(housingMedianAge^2)+medianIncome:log(population)+bedroomsPerRoom:medianIncome+medianIncome:housingMedianAge+distToCenter+distToCenter:medianIncome+housingMedianAge: bedroomsPerRoom+incomePerRoom:bedroomsPerRoom+housingMedianAge:distToCenter
 
-#other I can add: aveRooms:medianIncome+housingMedianAge:population+latitude:incomePerRoom+longitude:housingMedianAge
 
-lm.fit <- lm(medianHouseValue~.-id-oceanProximity-aveBedrooms-aveRooms-population+bedroomsPerRoom+longitude:latitude+log(population)+I(medianIncome^2)+I(medianIncome^3)+I(housingMedianAge^2)+medianIncome:log(population)+bedroomsPerRoom:medianIncome+medianIncome:housingMedianAge+distToCenter+distToCenter:medianIncome+housingMedianAge: bedroomsPerRoom+incomePerRoom:bedroomsPerRoom+housingMedianAge:distToCenter+latitude:incomePerRoom+longitude:housingMedianAge,data = data)
+lm.fit <- lm(medianHouseValue~.-id-oceanProximity-aveBedrooms-aveRooms-population+bedroomsPerRoom+longitude:latitude+log(population)+I(medianIncome^2)+I(medianIncome^3)+I(housingMedianAge^2)+medianIncome:log(population)+bedroomsPerRoom:medianIncome+medianIncome:housingMedianAge+distToCenter:medianIncome+latitude:incomePerRoom+bedroomsPerRoom:distToLA+I(medianIncome/housingMedianAge)+I(latitude^2)+I(longitude^2)+I(latitude^3)+I(longitude^3)+log(incomePerRoom)+log(medianIncome/distToCenter)+housingMedianAge:incomePerRoom+cityProximityScore:housingMedianAge+cityProximityScore:bedroomsPerRoom+medianIncome:cosDirToLA+medianIncome:sinDirToLA+medianIncome:cosDirToSF+medianIncome:sinDirToSF,data = data)
 summary(lm.fit)
 nvmax <- length(coef(lm.fit)) - 1
 
@@ -240,7 +290,7 @@ cv.errors=matrix(NA,k,nvmax, dimnames=list(NULL, paste(1:nvmax))) # NA means no 
 
 
 for(j in 1:k){
-  best.fit=regsubsets(medianHouseValue~.-id-oceanProximity-aveBedrooms-aveRooms-population+bedroomsPerRoom+longitude:latitude+log(population)+I(medianIncome^2)+I(medianIncome^3)+I(housingMedianAge^2)+medianIncome:log(population)+bedroomsPerRoom:medianIncome+medianIncome:housingMedianAge+distToCenter+distToCenter:medianIncome+housingMedianAge: bedroomsPerRoom+incomePerRoom:bedroomsPerRoom+housingMedianAge:distToCenter,data = data[folds!=j,],nvmax=nvmax)
+  best.fit=regsubsets(medianHouseValue~.-id-oceanProximity-aveBedrooms-aveRooms-population+bedroomsPerRoom+longitude:latitude+log(population)+I(medianIncome^2)+I(medianIncome^3)+I(housingMedianAge^2)+medianIncome:log(population)+bedroomsPerRoom:medianIncome+medianIncome:housingMedianAge+distToCenter:medianIncome+latitude:incomePerRoom+bedroomsPerRoom:distToLA+I(medianIncome/housingMedianAge)+I(latitude^2)+I(longitude^2)+I(latitude^3)+I(longitude^3)+log(incomePerRoom)+log(medianIncome/distToCenter)+housingMedianAge:incomePerRoom+cityProximityScore:housingMedianAge+cityProximityScore:bedroomsPerRoom+medianIncome:cosDirToLA+medianIncome:sinDirToLA+medianIncome:cosDirToSF+medianIncome:sinDirToSF,data = data[folds!=j,],nvmax=nvmax)
   for(i in 1:nvmax){
     pred=predict(best.fit,data[folds==j,],id=i)
     cv.errors[j,i]=mean( (data$medianHouseValue[folds==j]-pred)^2)
@@ -253,7 +303,7 @@ best.model.size <- as.numeric(names(which.min(mean.cv.errors)))
 plot(mean.cv.errors,type='b')
 points(best.model.size, mean.cv.errors[best.model.size], col = "red", pch = 19, cex = 1.5)
 # Obtain the best subset model using the full data and CV selected id
-reg.best=regsubsets(medianHouseValue~.-id-oceanProximity-aveBedrooms-aveRooms-population+bedroomsPerRoom+longitude:latitude+log(population)+I(medianIncome^2)+I(medianIncome^3)+I(housingMedianAge^2)+medianIncome:log(population)+bedroomsPerRoom:medianIncome+medianIncome:housingMedianAge+distToCenter+distToCenter:medianIncome+housingMedianAge: bedroomsPerRoom+incomePerRoom:bedroomsPerRoom+housingMedianAge:distToCenter,data = data, nvmax=nvmax)
+reg.best=regsubsets(medianHouseValue~.-id-oceanProximity-aveBedrooms-aveRooms-population+bedroomsPerRoom+longitude:latitude+log(population)+I(medianIncome^2)+I(medianIncome^3)+I(housingMedianAge^2)+medianIncome:log(population)+bedroomsPerRoom:medianIncome+medianIncome:housingMedianAge+distToCenter:medianIncome+latitude:incomePerRoom+bedroomsPerRoom:distToLA+I(medianIncome/housingMedianAge)+I(latitude^2)+I(longitude^2)+I(latitude^3)+I(longitude^3)+log(incomePerRoom)+log(medianIncome/distToCenter)+housingMedianAge:incomePerRoom+cityProximityScore:housingMedianAge+cityProximityScore:bedroomsPerRoom+medianIncome:cosDirToLA+medianIncome:sinDirToLA+medianIncome:cosDirToSF+medianIncome:sinDirToSF,data = data, nvmax=nvmax)
 coef(reg.best,best.model.size)
 
 
@@ -265,6 +315,7 @@ formula.best = as.formula(paste("medianHouseValue ~", paste(best.predictors, col
 model.best = lm(formula.best, data = data)
 summary(model.best)
 vif(model.best,type = "predictor")
+regfit <- regsubsets(formula.best,data = data,nvmax =length(coef(model.best)))
 ```
 
 
@@ -275,21 +326,22 @@ vif(model.best,type = "predictor")
 #oceanProximity+oceanProximity:medianIncome+housingMedianAge:oceanProximity+log(population):oceanProximity+latitude
 new.formula = update(formula.best, . ~ . + oceanProximity + oceanProximity:distToCenter +oceanProximity:medianIncome)
 model.best = lm(new.formula, data = data)
+
 summary(model.best)
-vif(model.best,type = "predictor")
+#vif(model.best,type = "predictor")
 
 
 #with oceanProximity is better
 
-plot(model.best)
+#plot(model.best)
 
 names(coef(model.best))
 # Remove outliers
-data_unlev <- data[c(7419),] # these are all island - ridge or lasso can get rid of this
+#data_unlev <- data[c(7419),] # these are all island - ridge or lasso can get rid of this
 
-data[data$oceanProximity == "ISLAND",]
-regfit.full=regsubsets(new.formula,data = data,nvmax =length(coef(model.best)))
-summary(regfit.full)
+#data[data$oceanProximity == "ISLAND",]
+#regfit.full=regsubsets(new.formula,data = data,nvmax =length(coef(model.best)))
+#summary(regfit.full)
 ```
 
 
@@ -305,8 +357,8 @@ y = data$medianHouseValue
 
 # Perform 10-fold cross-validation to find the best lambda
 set.seed(7)
-lambda_grid <- 10^seq(4, -4, length = 100)  # From 10,000 down to 0.0001
-cv.ridge = cv.glmnet(x, y, alpha = 0,lambda = lambda_grid, nfolds = 10)
+lambda_grid <- 10^seq(-5, -2, length = 100)  # from 1e-5 to 1e-2
+cv.ridge = cv.glmnet(x, y, alpha = 0,lambda = lambda_grid, nfolds = 10,standardize = TRUE)
 
 # Extract best lambda (lambda.min gives lambda with minimum MSE)
 best.lambda = cv.ridge$lambda.min
@@ -314,10 +366,12 @@ best.lambda = cv.ridge$lambda.min
 ridge.model = glmnet(x, y, alpha = 0, lambda = best.lambda)
 coef(ridge.model)
 
-library(pls)
 
 
 
+```
+
+```{r}
 
 # LASSO PLR
 pca_result <- prcomp(x, center = TRUE, scale. = TRUE)
@@ -386,18 +440,55 @@ test_data <- read.csv("Assignt1_test full.csv")
 test_data$bedroomsPerRoom <- test_data $aveBedrooms / test_data $aveRooms
 test_data$distToCenter <- sqrt((test_data$latitude - center_lat)^2 + (test_data$longitude - center_lon)^2)
 test_data$incomePerRoom = test_data$medianIncome / test_data$aveRoom
+# Add distance to LA
+test_data$distToLA <- apply(test_data[, c("longitude", "latitude")], 1, function(coord) {
+  distGeo(coord, la_coords) / 1000  # convert meters to km
+})
+
+#Add distance to SF
+test_data$distToSF <- apply(test_data[, c("longitude", "latitude")], 1, function(coord) {
+  distGeo(coord, sf_coords) / 1000
+})
+
+# Compute direction angles
+test_data$dirToLA <- atan2(test_data$latitude - la_coords[2], test_data$longitude - la_coords[1])
+test_data$dirToSF <- atan2(test_data$latitude - sf_coords[2], test_data$longitude - sf_coords[1])
+
+
+# Encode directions using sin and cos
+test_data$cosDirToLA <- cos(test_data$dirToLA)
+test_data$sinDirToLA <- sin(test_data$dirToLA)
+
+test_data$cosDirToSF <- cos(test_data$dirToSF)
+test_data$sinDirToSF <- sin(test_data$dirToSF)
+
+# Remove intermediate angle variables
+test_data$dirToLA <- NULL
+test_data$dirToSF <- NULL
+
+test_data$cityProximityScore <- 1 / (1 + test_data$distToLA) + 1 / (1 + test_data$distToSF)
+
+
+lm.fit <- lm(medianHouseValue~.-id-bedroomsPerRoom-distToCenter-incomePerRoom-distToSF-distToSF-sinDirToSF-sinDirToLA-cosDirToLA-cosDirToSF-cityProximityScore,data = data) # ID not a relevant predictor
+
+
+
+
 actual <- test_data$medianHouseValue
 
-#pred <- pmax(pmin(pred,500001),14999)
+
+pred <- pmax(pmin(pred,500001),14999)
 #OG
-lm.fit <- lm(medianHouseValue~.-id-bedroomsPerRoom,data = data) # ID not a relevant predictor
+lm.fit <- lm(medianHouseValue~.-id-bedroomsPerRoom-distToCenter-incomePerRoom-distToSF-distToSF,data = data)
 pred <- predict(lm.fit, newdata = test_data  )
+pred <- pmax(pmin(pred,500001),14999)
 og_mse <- mean((pred - actual)^2)
 og_mse
 
 
 #Best model
 pred <- predict(model.best, newdata = test_data  )
+pred <- pmax(pmin(pred,500001),14999)
 best_mse <- mean((pred - actual)^2)
 best_mse
 
@@ -405,11 +496,22 @@ best_mse
 #ridge
 test_matrix <- model.matrix(new.formula, data = test_data)[, -1]
 pred <- predict(ridge.model, s = best.lambda, newx = test_matrix)
+pred <- pmax(pmin(pred,500001),14999)
 ridge_mse <- mean((pred - actual)^2)
 ridge_mse
 
 
+```
 
+
+# Best so far with censoring
+[1] 4548677455
+[1] 3763439107
+[1] 3856612972
+
+
+
+```{r}
 
 #lasso pcr
 x_new <- model.matrix(new.formula, data = test_data)[, -1]
@@ -444,11 +546,6 @@ lasso_pls_mse
 
 
 
-#Best so far (current)
-[1] 5090720630
-[1] 4304628435
-[1] 4368520165
-[1] 5442228208
-[1] 4441052281
+
 
 
