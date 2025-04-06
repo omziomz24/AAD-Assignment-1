@@ -434,6 +434,10 @@ coef(lasso.pls.model)
 
 ```
 
+
+
+
+
 ``` {r}
 
 test_data <- read.csv("Assignt1_test full.csv")
