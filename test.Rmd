@@ -13,7 +13,7 @@ Content: \
  
 2 Multiple linear regression 
  2.1 Initial MLR model using all appropriate predictors \ 
- 2.2 Discussion of initial Model \ 
+ 2.2 Discussion of the initial model \ 
  2.3 Checking issues in the initial model \ 
   2.3.1 \ 
   2.3.2  \ 
@@ -63,9 +63,9 @@ str(data)
 # data$oceanProximity <- as.factor(data$oceanProximity)
 ```
 
-When inspecting the orginal data, we observe that there are some missing values (NA's) in aveBedrooms. We delete these rows that contains NA's for simplicity. 
+When inspecting the orginal data, we observe that there are 190 rows that have missing values (NA's) in the varaible "aveBedrooms". Since this is not a large proportion of our data (190 out of 18640), we decided to delete these rows that contains NA's for consistency and simplicity. 
 ```{r }
-incomplete_rows <- data[!complete.cases(data), ] # these are all missing aveBedrooms. Maybe just don't use this feature
+incomplete_rows <- data[!complete.cases(data), ] 
 data <- na.omit(data) 
 rownames(data) <- 1:nrow(data) 
 ```
@@ -73,9 +73,7 @@ rownames(data) <- 1:nrow(data)
 
 ## 1.2 Preliminary analysis on the data
 
-Let's first inspect the distribution of the response variable, medianHouseValue. \
-
-From the histogram, it is evident that the medianHouseValue exhibits right-skewness. Interestingly, there are visibly a concentration of values at the right-end, where the bin for the house value of \$500,000 is disproportionately tall. This is likely due to data censoring, where all the medianHouseValue over a certain threshold is recorded at a capped value around \$500,000. \ 
+### 1.2.1 Histogram on the response variable and data censoring   
 
 ```{r}
 hist(data$medianHouseValue,
@@ -84,18 +82,72 @@ hist(data$medianHouseValue,
      main = "Hostogram of Median House Value",
      breaks = 25)
 ```
+From the histogram, it is evident that the medianHouseValue exhibits right-skewness. Interestingly, there are visibly a concentration of values at the right-end, where the bin for the house value of \$500,000 is disproportionately tall. This is likely due to data censoring, where all the medianHouseValue over a certain threshold is recorded at a capped value around \$500,000. 
 
-
+Through further inspection we find out this cap for censoring is at $50,0001. 
 ```{r}
-#censoring
-data[order(-data$medianHouseValue), ]
-value <- 500001  # change to your target value
+value <- max(data$medianHouseValue)  
 percentage <- mean(data$medianHouseValue == value) * 100
 cat("Percentage of data with medianHouseValue =", value, "is", percentage, "%\n")
 ```
 
+
+### 1.2.2 Correlations among variables 
+
 ```{r}
-# initial plots
+numeric.data <- data[sapply(data, is.numeric)]
+numeric.data <- numeric.data[, !names(numeric.data) %in% c("id")]
+# head(numeric.data)
+
+cor_matrix <- cor(numeric.data)
+corrplot(cor(cor_matrix), method = "circle")
+```
+From the correlation matrix plot we can see that among all the predictors, medianHouseValue has highest correlation with Median Income. This is pretty intuitive, as we expect high-income households purchasing more expensive houses. \ 
+
+Longitude and Latitude are highly negatively correlated, while Average Rooms and Average Bedrooms are highly positively correlated. This multicollinearity can lead to issues such as unstable coefficient estimates and inflated standard errors, as the model struggles to distinguish the individual effects of highly correlated predictors. Consequently, the interpretability of the regression results is compromised. We will address this issue later in section 2.4 Model improvements. \ 
+
+Note that ID is just for labellng purposes and it is not a relevant predictor, so we don't care about the correlation between ID and other variables. 
+
+
+### 1.2.3 Geospacial plot of medianHouseValue 
+
+Housing values can vary based on their proximity to major cities. By analyzing the provided longitude and latitude, we can deduce that the dataset originates from California. To visualize the relative variation in median house values, we create a heatmap that highlights the influence of major cities, specifically Los Angeles (LA) and San Francisco (SF). 
+
+```{r}
+cities <- data.frame(
+  city = c("LA", "SF"), 
+  longitude = c(-118.24, -122.42),
+  latitude = c(34.05, 37.77)
+)
+
+ggplot(data, 
+       aes(x = longitude, 
+           y = latitude, 
+           colour = medianHouseValue)) + 
+  geom_point(size = 1) + 
+  scale_colour_gradient(low = "blue", high = "yellow") + 
+  geom_point(data = cities, 
+             aes(x = longitude, y = latitude),
+             colour = "red", 
+             size = 2) + 
+  geom_text(data = cities, 
+            aes(label = city), 
+            vjust = -1, 
+            colour = "red", 
+            size = 7, 
+            fontface = "bold") + 
+  labs(title = "Geospacial Plot of Median House Value", 
+       x = "Longitude", 
+       y = "Latitude", 
+       colour = "House Value") + 
+  theme_minimal() 
+```
+Clearly, median housing value is higher in the SF and LA regions. Therefore, it is reasonable to integrate a region's closeness to these major cities in our regression model later. 
+
+
+### 1.2.4 Plots of the response variable vs different features 
+
+```{r}
 target_col <- "medianHouseValue"
 exclude <- c("id","oceanProximity",target_col)
 
@@ -108,30 +160,71 @@ for (col in names(data)) {
   }
 }
 ```
+Median House Value vs longitude/latitude: there is no clear linear relationship or overall trend. But we can see that for some specific longtitude/latitude the housing value is higher. This is consistent with our findings in the geospacial plot - the peaks in the above plot has to do with the relative location to major cities, SF and LA. This motivates us to do some transformation on the raw longitude and latitude data while integrating relevant information in the MLR framwork later on.  \ 
 
-
-
+Median House Value vs Housing Media Age: No clear pattern again just by looking at the plot. However the high density of data on the rightmost band (representiing housingMedianAge = 52) shows another sign of data censoring. \ 
 
 ```{r}
-# For qualitative variable
-boxplot(medianHouseValue ~ oceanProximity, data = data,
-        main = "Median House Value by Ocean Proximity",
-        xlab = "Ocean Proximity",
-        ylab = "Median House Value",
-        col = "lightblue")
-
-# Need to include more stuff, very basic here
+# Should we truncate the age groups? 
 ```
 
 
+Median House Value vs Average Rooms / Average Bedrooms: The linear pattern is not clear when we plot against the entire data range for rooms. These two plots exposes some issue of high leverage points - some regions have average number of bedrooms over 30 and average number of rooms over 140. These abnormalities are worthy to be investigated and treated when we fit the MLR. \ 
+
+```{r} 
+# Should we comment further on this in the report? Even if zoom in the trend not clear 
+# Focus on the range of [0, 20] for aveRooms 
+plot(data$aveBedrooms, data$medianHouseValue, 
+     xlim = c(0, 20), 
+     pch = 16, 
+     xlab = "Average Number of Bedrooms (aveRooms)", 
+     ylab = "Median House Value (medianHouseValue)", 
+     cex = 0.3) 
+```
+
+Median House Value vs Population: The relationship appear non-linear even if we zoom in to the population data range 0 to 5000: \ 
+
+```{r}
+plot(data$population, data$medianHouseValue, 
+    xlim = c(0, 5000), 
+     pch = 16, 
+     xlab = "Population", 
+     ylab = "Median House Value (medianHouseValue)", 
+     cex = 0.3) 
+```
+
+Median House Value vs Median Income: We can see some clear positive trend. This resonates with the correlation plot result, where these two features are positively correlated.  \ 
+
+For those pairs where linear relationship is unclear, we will explore log transformations and polynomials in section 1.2.6 single linear regression.  
 
 
+### 1.2.5 Boxplot of Median House Value by Ocean Proximity
+
+For the qualitative variable, Ocean Proximity, we can examine the differences across different classes via a boxplot: 
+```{r}
+boxplot(medianHouseValue ~ oceanProximity, data = data,
+        main = "Boxplot of Median House Value by Ocean Proximity",
+        xlab = "Ocean Proximity",
+        ylab = "Median House Value",
+        col = "lightblue")
+```
+From the plot, island housing appears to be most valuable on average, whereas inland housing appears to be least valuable. The median value for other 3 classes (<1h ocean, near bay and near ocean) seems to be close to each other. 
 
 
-# More exploring
-Single linear regression
+### 1.2.6 More exploring: key results from single linear regression 
+
+individual pair of relationships are all statistically significant: 
+
+But some assumptions necessary for OLS are clearly violated (e.g. heteroskedasiticty, )
+
+Some relationships are clearly non-linear so have to consider transformations 
+
+
 
 ```{r }
+# comment: I don't think we should report all of them below, just the important ones should suffice 
+# comment: I will keep the entire, original chunk here for now: 
+
 #Do each linear regression separately and view plots
 #longitude, clearly non-linear poly?
 lm.fit <- lm(medianHouseValue~longitude,data = data) 
@@ -221,10 +314,49 @@ text(-122.42, 37.77, labels = "SF", pos = 3, col = "blue")
 
 ```
 
-2.2 Multiple linear regression
-MUST RUN THIS
+
+
+
+
+
+
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+
+# 2 Multiple linear regression 
+
+## 2.1 Initial MLR model using all appropriate predictors  
+
+We will be using the all the given predictors except for id, since it is irrelevant. 
+```{r}
+initial_fit <- lm(data$medianHouseValue ~. - id, data = data) 
+summary(initial_fit)
+```
+
+
+## 2.2 Discussion of the initial model 
+
+The p-value of the F-test is practically zero, therefore we have sufficient evidence to reject the null hypothesis that all regression coefficients are zero. This means that the model has overall significance, and that at least one of the predictors are useful in explaning the variation in medianHouseValue.  \ 
+
+Having concluded that this model (initial_fit) has overall significance, we can gauge the significance of individual predictors through the t-test p-values:  \ 
+At 5% level of significance, we cannot say that population is useful, as we do not have sufficient evidence to reject the null hypothesis that its corresponding coefficient is non-zero. The dummy variable, "NEAR BAY", associated to the categorical predictor, "oceanProximity", is also shown to be insignificant. This might be an indication that comparing to the base case (<1H OCEAN), NEAR BAY does not lead to significant change in Median House Price. 
+
+
+## 2.3 Checking issues in the initial model 
+
+
+
+
+
+
+
+
+
+
 ```{r }
-# initial model
+
 # New fit
 data$bedroomsPerRoom <- data$aveBedrooms / data$aveRooms
 #distance to centre

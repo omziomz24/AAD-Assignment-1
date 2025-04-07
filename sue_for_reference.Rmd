@@ -104,10 +104,8 @@ hist(clean_data$medianHouseValue,
 The boxplot clearly indicates that the Median House Value is right-skewed, with a longer tail on the higher end. Additionally, there are several outliers present at the upper extreme of the distribution - 
 (done)
 
-### Correlations 
+### Correlations - 
 From the correlation matrix plot we can see that among all the predictors, Median House Value is most correlated with Median Income. This is pretty intuitive, as we expect high-income households purchasing more expensive houses. 
-
-There is little correlation between Median Housing Value and Median Income. 
 
 Longitude and Latitude are highly negatively correlated, while Average Rooms and Average Bedrooms are highly positively correlated. This multicollinearity can lead to issues such as unstable coefficient estimates and inflated standard errors, as the model struggles to distinguish the individual effects of highly correlated predictors. Consequently, the interpretability of the regression results is compromised.To mitigate this, we can remove one of the correlated variables, which will be discussed later, in section 2.2. 
 
@@ -127,7 +125,7 @@ print(cor_medianHouseValue)
 corrplot(cor(clean_data[, sapply(clean_data, is.numeric)]), method = "circle")
 ```
 
-### Outliers Detection
+### Outliers Detection - 
 ```{r}
 boxplot_medianHouseValue <- boxplot(clean_data$medianHouseValue,
         main = "Boxplot of Medin House Value", 
@@ -143,6 +141,7 @@ outliers <- boxplot_medianHouseValue$out
 num_outliers <- length(outliers) 
 print(paste("Number of outliers:", num_outliers))
 ```
+
 ### Pairwise Plots 
 ```{r, echo=FALSE}
 # Pairwise scatter plots for numeric variables 
@@ -170,6 +169,7 @@ plot(clean_data$medianIncome, clean_data$medianHouseValue,
      ylim = c(0, 600000), 
      cex.axis = 0.8)
 ```
+
 ### More Plots: Boxplot of Average Rooms 
 Some extreme outliers here
 ```{r}
@@ -181,7 +181,7 @@ boxplot(data$aveRooms,
         horizontal = TRUE)
 ```
 
-### Geospacial Plot: Median House Value 
+### Geospacial Plot: Median House Value - 
 ```{r}
 ggplot(clean_data, aes(x = clean_data$longitude, y = clean_data$latitude)) + 
   geom_point(aes(color = clean_data$medianHouseValue), size = 0.7) + 
@@ -198,7 +198,7 @@ At a glance, median housing value is higher in the South than in the North.
 
 There are some observable clusters. For example, the region around (-122.5, 37.5) and the region around (-118.75, 33.75) has highest density of high median housing values. These two regions has pretty high data point desity to begin with - thats why we also observe higher density of high value houses. 
 
-### Geospacial Plot: Median Income 
+### Geospacial Plot: Median Income - 
 expect to see similar pattern as above 
 ```{r}
 ggplot(clean_data, aes(x = clean_data$longitude, y = clean_data$latitude)) + 
