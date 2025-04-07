@@ -279,12 +279,8 @@ plot(lm.fit)
 lm.fit <- lm(medianHouseValue~poly(medianIncome,2),data = data) 
 summary(lm.fit)
 plot(lm.fit)
-```
 
 
-
-
-```{r}
 ## MOST IMPORTANT BITS
 
 #looks way better
@@ -293,7 +289,14 @@ lm.fit <- lm(medianHouseValue~log(population),data = data)
 summary(lm.fit)
 plot(lm.fit)
 
+
 lm.fit <- lm(medianHouseValue~bedroomsPerRoom,data = data) 
+summary(lm.fit)
+plot(lm.fit)
+
+
+
+lm.fit <- lm(medianHouseValue~aveBedroomsPerRoom,data = data) 
 summary(lm.fit)
 plot(lm.fit)
 
