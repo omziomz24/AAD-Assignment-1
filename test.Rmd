@@ -211,7 +211,7 @@ boxplot(medianHouseValue ~ oceanProximity, data = data,
 From the plot, island housing appears to be most valuable on average, whereas inland housing appears to be least valuable. The median value for other 3 classes (<1h ocean, near bay and near ocean) seems to be close to each other. 
 
 
-### 1.2.6 More exploring: key results from single linear regression 
+### 1.2.6 More exploring: key results from single linear regression (Feel like this can be put into 2.3 as well?)
 
 individual pair of relationships are all statistically significant: 
 
@@ -279,10 +279,12 @@ plot(lm.fit)
 lm.fit <- lm(medianHouseValue~poly(medianIncome,2),data = data) 
 summary(lm.fit)
 plot(lm.fit)
+```
 
 
 
 
+```{r}
 ## MOST IMPORTANT BITS
 
 #looks way better
@@ -291,34 +293,11 @@ lm.fit <- lm(medianHouseValue~log(population),data = data)
 summary(lm.fit)
 plot(lm.fit)
 
-
 lm.fit <- lm(medianHouseValue~bedroomsPerRoom,data = data) 
 summary(lm.fit)
 plot(lm.fit)
 
-
-
-plot(data$longitude, data$latitude, 
-     xlab = "Longitude", ylab = "Latitude", 
-     main = "California Housing Data with LA and SF", 
-     pch = 20, col = "grey")
-
-# Add LA point
-points(-118.24, 34.05, col = "red", pch = 19, cex = 1.5)
-text(-118.24, 34.05, labels = "LA", pos = 3, col = "red")
-
-# Add SF point
-points(-122.42, 37.77, col = "blue", pch = 19, cex = 1.5)
-text(-122.42, 37.77, labels = "SF", pos = 3, col = "blue")
-
-
 ```
-
-
-
-
-
-
 
 
 
