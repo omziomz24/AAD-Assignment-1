@@ -283,6 +283,12 @@ plot(lm.fit)
 
 
 
+
+
+```
+
+
+```{r}
 ## MOST IMPORTANT BITS
 
 #looks way better
@@ -291,12 +297,11 @@ lm.fit <- lm(medianHouseValue~log(population),data = data)
 summary(lm.fit)
 plot(lm.fit)
 
+BedroomsPerRoom <- data$aveBedrooms / data$aveRooms
 
-lm.fit <- lm(medianHouseValue~bedroomsPerRoom,data = data) 
+lm.fit <- lm(medianHouseValue~aveBedroomsPerRoom,data = data) 
 summary(lm.fit)
 plot(lm.fit)
-
-
 
 plot(data$longitude, data$latitude, 
      xlab = "Longitude", ylab = "Latitude", 
@@ -310,12 +315,7 @@ text(-118.24, 34.05, labels = "LA", pos = 3, col = "red")
 # Add SF point
 points(-122.42, 37.77, col = "blue", pch = 19, cex = 1.5)
 text(-122.42, 37.77, labels = "SF", pos = 3, col = "blue")
-
-
 ```
-
-
-
 
 
 
