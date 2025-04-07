@@ -45,7 +45,6 @@ library(leaps) # for Best Subset Selection
 ```
 
 
-
 ---------------------------------------------------------------------------------
 
 # 1 Descriptive analysis of the data set
@@ -55,8 +54,8 @@ data <- read.csv("Assignt1_data.csv")
 
 # str(data) 
 # summary(data)
-head(data)
-dim(data) 
+# head(data)
+# dim(data) 
 data$oceanProximity <- as.factor(data$oceanProximity)
 ```
 
