@@ -102,6 +102,7 @@ hist(clean_data$medianHouseValue,
      breaks = 25)
 ```
 The boxplot clearly indicates that the Median House Value is right-skewed, with a longer tail on the higher end. Additionally, there are several outliers present at the upper extreme of the distribution - 
+(done)
 
 ### Correlations 
 From the correlation matrix plot we can see that among all the predictors, Median House Value is most correlated with Median Income. This is pretty intuitive, as we expect high-income households purchasing more expensive houses. 

@@ -52,7 +52,7 @@ library(leaps) # for Best Subset Selection
 
 ## 1.1 Data loading and cleaning
 
-There are 18640 data points in the original data set. There are 10 features being observed and recorded, inclduing the response variable, Median House Value ("medianHouseValue"). 
+There are 18640 data points in the original data set. There are 10 features being observed and/or recorded, inclduing the response variable, Median House Value ("medianHouseValue"). 
 ```{r}
 data <- read.csv("Assignt1_data.csv") 
 # View(data) 
@@ -62,16 +62,29 @@ str(data)
 # head(data)
 # data$oceanProximity <- as.factor(data$oceanProximity)
 ```
-When inspecting the orginal data, we observe that there are some missing values (NA's) in aveBedrooms. 
+
+When inspecting the orginal data, we observe that there are some missing values (NA's) in aveBedrooms. We delete these rows that contains NA's for simplicity. 
 ```{r }
-# NA's
 incomplete_rows <- data[!complete.cases(data), ] # these are all missing aveBedrooms. Maybe just don't use this feature
 data <- na.omit(data) 
 rownames(data) <- 1:nrow(data) 
-
 ```
 
-# Exploratory analysis
+
+## 1.2 Preliminary analysis on the data
+
+Let's first inspect the distribution of the response variable, medianHouseValue. \
+
+From the histogram, it is evident that the medianHouseValue exhibits right-skewness. Interestingly, there are visibly a concentration of values at the right-end, where the bin for the house value of \$500,000 is disproportionately tall. This is likely due to data censoring, where all the medianHouseValue over a certain threshold is recorded at a capped value around \$500,000. \ 
+
+```{r}
+hist(data$medianHouseValue,
+     xlab = "Median House Value ($)",
+     ylab = "Frequency",
+     main = "Hostogram of Median House Value",
+     breaks = 25)
+```
+
 
 ```{r}
 #censoring
