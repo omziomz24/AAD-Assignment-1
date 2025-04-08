@@ -133,7 +133,7 @@ vif(lm.fit.og)
 numeric_vars <- data[sapply(data, is.numeric)]
 cor_matrix <- cor(numeric_vars, use = "complete.obs")
 round(cor_matrix, 2)
-
+library(leaps)
 #ideas for model selection
 regfit=regsubsets(medianHouseValue~.,data = data,nvmax =length(coef(lm.fit.og)))
 #summary(regfit.full)
