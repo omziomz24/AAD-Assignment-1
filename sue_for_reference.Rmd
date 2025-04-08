@@ -1,0 +1,402 @@
+---
+title: "sue-for-reference"
+output: html_document
+date: "2025-04-06"
+---
+---
+title: "AAD Assignment 1 - Group 26"
+author: "Omar, Eloise, Alina, Sue"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+Content: \ 
+
+1 Descriptive analysis of the data set\ 
+ 1.1 Data loading and cleaning \ 
+ 1.2 Preliminary analysis on the data \ 
+ 
+2 Multiple linear regression 
+ 2.1 Initial MLR model using all appropriate predictors \ 
+ 2.2 Discussion of initial Model \ 
+ 2.3 Checking issues in the initial model \ 
+  2.3.1 \ 
+  2.3.2  \ 
+  2.3.3 \ 
+  2.3.4 .... \ 
+ 2.4 Model improvements \ 
+ 2.5 Three most significant variables \ 
+ 
+3 Model Performance: initial model vs improved model \ 
+ 3.1 Training MSE \ 
+  3.1.1 Training MSE of the initial model \ 
+  3.1.2 Training MSE of the improved model \ 
+ 3.2 Estimating testing error using the 80-20 split validation set approach \ 
+ 3.3 Estimating testing error using 5-fold cross validation \ 
+ 3.4 Estimating testing error using LOOCV \ 
+ 3.5 Conclusion: whether the final MLR model better than the initial \ 
+
+4 Prediction competition \ 
+ 
+ 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(car)
+library(dplyr)
+library(ggplot2)
+library(car)
+
+library(corrplot) # for correlation plot 
+library(leaps) # for Best Subset Selection 
+```
+
+
+
+
+
+
+
+------------------------------------------------------------------------------------------
+
+# 1.1 Descriptive Analysis of the Data Set
+
+```{r }
+# Load the data 
+data <- read.csv("Assignt1_data.csv", header = TRUE)
+
+# Summary Statistics of the Original Data 
+str(data) 
+head(data)
+dim(data) 
+summary(data)
+```
+
+```{r}
+# Clean the data 
+colSums(is.na(data))  # Count NAs in each column
+# 190 out of 18640 rows with na values in aveBedrooms 
+clean_data <- na.omit(data) # remove na rows 
+
+# Summary Stats of the Cleaned Data 
+str(clean_data) 
+head(clean_data)
+dim(clean_data) 
+summary(clean_data)
+```
+
+
+### Histogram of the Response Variable 
+```{r}
+hist(clean_data$medianHouseValue,
+     breaks = 30,
+     freq = FALSE,
+     main = "Histogram of Median Housing Value")
+lines(density(clean_data$medianHouseValue), col = "red", lwd = 2)
+boxplot(clean_data$medianHouseValue)
+
+hist(clean_data$medianHouseValue,
+     xlab = "Median House Value ($)",
+     ylab = "Frequency",
+     main = "Hostogram of Median House Value",
+     breaks = 25)
+```
+The boxplot clearly indicates that the Median House Value is right-skewed, with a longer tail on the higher end. Additionally, there are several outliers present at the upper extreme of the distribution - 
+(done)
+
+### Correlations - 
+From the correlation matrix plot we can see that among all the predictors, Median House Value is most correlated with Median Income. This is pretty intuitive, as we expect high-income households purchasing more expensive houses. 
+
+Longitude and Latitude are highly negatively correlated, while Average Rooms and Average Bedrooms are highly positively correlated. This multicollinearity can lead to issues such as unstable coefficient estimates and inflated standard errors, as the model struggles to distinguish the individual effects of highly correlated predictors. Consequently, the interpretability of the regression results is compromised.To mitigate this, we can remove one of the correlated variables, which will be discussed later, in section 2.2. 
+
+* Note that ID is not a relevant predictor, so we don't care about the correlation between ID and other variables. 
+```{r}
+numeric.data <-  clean_data[sapply(clean_data, is.numeric)]
+head(numeric.data)
+cor_medianHouseValue <- cor(clean_data$medianHouseValue, 
+                            clean_data[, c("longitude", 
+                                            "latitude", 
+                                            "housingMedianAge",
+                                            "aveRooms",
+                                            "aveBedrooms",
+                                            "population",
+                                            "medianIncome")])
+print(cor_medianHouseValue)
+corrplot(cor(clean_data[, sapply(clean_data, is.numeric)]), method = "circle")
+```
+
+### Outliers Detection - 
+```{r}
+boxplot_medianHouseValue <- boxplot(clean_data$medianHouseValue,
+        main = "Boxplot of Medin House Value", 
+        outline = TRUE, 
+        col = "lightblue", 
+        horizontal = TRUE,
+        cex = 1, 
+        col.out = "red", 
+        pch = 16)
+grid()
+
+outliers <- boxplot_medianHouseValue$out
+num_outliers <- length(outliers) 
+print(paste("Number of outliers:", num_outliers))
+```
+
+### Pairwise Plots 
+```{r, echo=FALSE}
+# Pairwise scatter plots for numeric variables 
+pairs(clean_data[, 
+                 c("longitude", 
+                   "latitude", 
+                   "housingMedianAge", 
+                   "aveRooms", 
+                   "population", 
+                   "medianIncome", 
+                   "medianHouseValue")],
+      cex = 0.1)
+
+```
+
+### More Plots: Median House Value with Median Income 
+```{r}
+options(scipen = 999)
+plot(clean_data$medianIncome, clean_data$medianHouseValue,
+     xlab = "Median Income ($10,000's)", ylab = "Median House Value ($)",
+     main = "Scatter Plot of Median Income and Median House Value",
+     cex = 0.1,
+     col = "red",
+     xlim = c(0, 16),
+     ylim = c(0, 600000), 
+     cex.axis = 0.8)
+```
+
+### More Plots: Boxplot of Average Rooms 
+Some extreme outliers here
+```{r}
+boxplot(data$aveRooms, 
+        main = "Boxplot of Average Rooms",
+        cex = 0.5,
+        pch = 16, 
+        col = "red",
+        horizontal = TRUE)
+```
+
+### Geospacial Plot: Median House Value - 
+```{r}
+ggplot(clean_data, aes(x = clean_data$longitude, y = clean_data$latitude)) + 
+  geom_point(aes(color = clean_data$medianHouseValue), size = 0.7) + 
+  scale_color_gradient(low = "blue", high = "red", 
+                       name = "Median House Value ($)") +
+  theme_minimal() + 
+  ggtitle("Geospatial Plot of Median Housing Price") + 
+  labs(x = "Longitude", y = "Latitude") 
+
+# Longitude represents east-west position (-180: west, 180: east) 
+# Latitude represents north-south position  (-90: south, 90:north) 
+```
+At a glance, median housing value is higher in the South than in the North. 
+
+There are some observable clusters. For example, the region around (-122.5, 37.5) and the region around (-118.75, 33.75) has highest density of high median housing values. These two regions has pretty high data point desity to begin with - thats why we also observe higher density of high value houses. 
+
+### Geospacial Plot: Median Income - 
+expect to see similar pattern as above 
+```{r}
+ggplot(clean_data, aes(x = clean_data$longitude, y = clean_data$latitude)) + 
+  geom_point(aes(color = clean_data$medianIncome), size = 0.7) + 
+  scale_color_gradient(low = "blue", high = "red", 
+                       name = "Median Income ($10,000's)") +
+  theme_minimal() + 
+  ggtitle("Geospatial Plot of Median Income ($10,000's)") + 
+  labs(x = "Longitude", y = "Latitude") 
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+------------------------------------------------------------------------------------------
+
+# 2 Multiple Linear Regression 
+
+
+
+## 2.1 Initial MLR model using all appropriate predictors
+
+We will be using the all the given predictors except for id, since it is irrelevant. 
+
+```{r}
+fit1 <- lm(clean_data$medianHouseValue ~. - id, data = clean_data) 
+summary(fit1)
+```
+
+## 2.2 Discussion of the initial model 
+
+The p-value of the F-test is practically zero, therefore we have sufficient evidence to reject the null hypothesis that all regression coefficients are zero. This means that the model has overall significance, and that at least one of the predictors are useful in explaning the variation in the response variable (i.e. medianHouseValue). 
+
+Having concluded that this model (fit1_MHV) has overall significance, we can gauge the significance of individual predictors through the t-test p-values. At 5% level of significance, we canot say that population is useful, as we do not have sufficient evidence to reject the null hypothesis that its corresponding coefficient is non-zero. The dummy variable, "NEAR BAY", associated to the categorical predictor, "oceanProximity", is also shown to be insignificant. This might be an indication that comparing to the base case (<1H OCEAN), NEAR BAY does not lead to significant change in Median House Price. 
+
+## 2.3 Checking issues in the initial model 
+
+```{r}
+par(mfrow = c(2,2))
+plot(fit1, cex = 0.1)
+```
+
+### 2.3.1 Residual Plot: 
+
+The residual plot shows that the points are not quite randomly scattered around zero. This means that the homoskedasiticity and linear assumption might be questionable. To address non-linearity, we can consider polynomial terms or interactions. 
+
+The funnel shape (the spread of residuals seems to increase as the fitted values increase) within the fitted value range (0, 400000) strengthens my doubt of heteroskedasticity. We may consider transforming some of our predictors later. 
+
+There are some outliers in the residuals that are far away from zero. These influential points may be high-leverage or outliers or both - should be investigated later. 
+```{r}
+par(mfrow = c(1, 1)) 
+options(scipen = 999) 
+plot(fit1, which = 1, cex = 0.2, pch = 16, cex.axis = 0.6,
+     main = "Residual Plot (Residual vs Fitted) of Fit1 (using all Predictors)") 
+```
+
+### QQ Plot for Residuals: 
+
+A key assumption behind generalized linear model is that the error term is normally distributed. This is why t-statistics and F-statistics can be used in our previous testing. 
+
+T-stats are robust under some mild deviation from normality, but under extreme non-normality, these statistics become less reliable. 
+
+In our plot, the points deviates from the reference line (dashed line) for larger and smaller quantiles (roughly outside of this range: (-2, 1.5)), indicating non-normality (especially high skewness) and influence of outliers especially at the tails. 
+```{r}
+plot(fit1, which = 2, cex = 0.2, pch = 16, cex.axis = 0.8,
+     main = "(Normal) QQ Plot of Fit1 (using all Predictors)") 
+```
+
+### Outliers 
+
+Outlier identification: as a rule of thumb, we consider those whose studentised residual has a magnitude greater than 3 as outliers here. 
+
+However we cannot just simply remove the outliers in this case. This is because these outliers coule be attributable to model specification or other problems. We will see what we can do with the model selection and then can come back to this later. 
+```{r}
+residuals_fit1 <- residuals(fit1)
+stdresiduals_fit1 <- rstandard(fit1)
+outlier_row_number <- which(abs(stdresiduals_fit1) > 3)
+
+length(outlier_row_number) # gives how many outliers are there 
+```
+
+### High Leverage Points
+We will compute the leverage statistic hi and to see whether it is >> (p + 1)/n. Where p is the number of predictors in the model and n is the sample size. 
+
+Having 3,317 high leverage points out of 18,450 data points means that about 18% of the data has high leverage. This indicates that our regression line can change dramatically with small changes in the predictors. One possible reason is that we are overfitting the data - and a reason to this is having too many predictor variables. 
+```{r}
+leverage_values <- hatvalues(fit1)
+
+p_lvg <- length(coef(fit1)) 
+n_lvg <- nrow(clean_data) 
+threshold_lvg <- (p_lvg + 1) / n_lvg
+
+highlvg_row_number <- which(leverage_values > threshold_lvg)
+# highlvg_row_number 
+length(highlvg_row_number)
+
+plot(leverage_values, type = "h", col = "blue")
+abline(h = 2 * mean(leverage_values), col = "red")
+```
+
+### Collinearity 
+The arbitrary threshold of severe collinearity is VIF greater or equal to 5. Here, all the predictors are shown to have a non-severe VIF. However, Longitude and Latitude shows relatively high VIF comparing to other predictors - a cause of this is the high correlation between the two. 
+```{r}
+vif(fit1)
+```
+
+
+
+## Making improvements 
+
+If we drop population: 
+```{r}
+fit2 <- lm(clean_data$medianHouseValue ~. - id - population, data = clean_data) 
+summary(fit2) 
+# no obvious changes here in terms of t and F test results, Std Error and Estimate 
+```
+
+### Collinearity
+If we use Latitude instead of both Longtitude and Latitude: 
+```{r}
+fit3 <- lm(clean_data$medianHouseValue ~. - id - population - longitude, 
+           data = clean_data) 
+summary(fit3) 
+# Latitude become insiginificant this time - try interaction 
+```
+If we include an interaction term, and keep both primary variables (Longitude and Latitude). 
+```{r}
+fit4 <- lm(clean_data$medianHouseValue ~. + longitude:latitude - id - population, 
+           data = clean_data) 
+summary(fit4) 
+```
+On top of interaction, we consider using aveRooms instead of both aveRooms and aveBedrooms: 
+```{r}
+fit5 <- lm(clean_data$medianHouseValue ~. + longitude:latitude - id - population - aveBedrooms, 
+           data = clean_data) 
+summary(fit5) 
+```
+What if interaction? 
+```{r}
+fit6 <- lm(clean_data$medianHouseValue ~. + longitude:latitude + aveRooms:aveBedrooms - id - population, 
+           data = clean_data) 
+summary(fit6) 
+```
+
+### Heteroskedsiticity & Skewness (i.e. Non-normality)
+All terms are 
+```{r}
+fit7 <- lm(log(medianHouseValue) ~ .
+           + longitude:latitude + aveRooms:aveBedrooms - id - population, 
+           data = clean_data)
+summary(fit7)
+```
+
+## 2.4 Model improvements
+
+There are a couple of issues we would like to address: \ 
+1. Collinearity: We will be doing a Ridge regression to address this problem. Although Lasso is also a relevant method, it only performs better if many predictors are useless. Given that many of the predictors in our initial model are useful (individially significant through the t-test), we want to keep all of them. 
+2. 
+
+
+
+## 2.5 Three most significant variables
+
+Since we do not have many predictors in the original data, we will approach this question using the best subset selection among all 3-variable models.
+```{r}
+lm_3var <- regsubsets(clean_data$medianHouseValue ~ ., 
+                         data = clean_data, 
+                         nvmax = 3)
+coef(lm_3var, id = 3)
+```
+
+From the best subset approach we obtain the following 3-variable model: 
+$$
+\widehat{\text{medianHouseValue}} = 55796.07 + 983.35 \cdot \text{HousingMedianAge} + 38093.87 \cdot \text{MedianIncome} - 77151.64 \cdot \text{OceanProximity}_{\text{INLAND}}
+$$
+
+
+
+
+
+
+------------------------------------------------------------------------------------------
+
+# 3 Model Performance: initial model vs improved model 
+
+
+
