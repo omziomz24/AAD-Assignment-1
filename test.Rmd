@@ -5,34 +5,16 @@ date: "`r Sys.Date()`"
 output: pdf_document
 ---
 
-Content: \ 
+Content:  
 
-1 Descriptive analysis of the data set\ 
- 1.1 Data loading and cleaning \ 
- 1.2 Preliminary analysis on the data \ 
- 
-2 Multiple linear regression 
- 2.1 Initial MLR model using all appropriate predictors \ 
- 2.2 Discussion of the initial model \ 
- 2.3 Checking issues in the initial model \ 
-  2.3.1 \ 
-  2.3.2  \ 
-  2.3.3 \ 
-  2.3.4 .... \ 
- 2.4 Model improvements \ 
- 2.5 Three most significant variables \ 
- 
-3 Model Performance: initial model vs improved model \ 
- 3.1 Training MSE \ 
-  3.1.1 Training MSE of the initial model \ 
-  3.1.2 Training MSE of the improved model \ 
- 3.2 Estimating testing error using the 80-20 split validation set approach \ 
- 3.3 Estimating testing error using 5-fold cross validation \ 
- 3.4 Estimating testing error using LOOCV \ 
- 3.5 Conclusion: whether the final MLR model better than the initial \ 
+1 Descriptive analysis of the data set  1.1 Data loading and cleaning   1.2 Preliminary analysis on the data  
 
-4 Prediction competition \ 
- 
+2 Multiple linear regression 2.1 Initial MLR model using all appropriate predictors   2.2 Discussion of the initial model   2.3 Checking issues in the initial model   2.3.1   2.3.2   2.3.3   2.3.4 ....   2.4 Model improvements   2.5 Three most significant variables  
+
+3 Model Performance: initial model vs improved model   3.1 Training MSE   3.1.1 Training MSE of the initial model   3.1.2 Training MSE of the improved model   3.2 Estimating testing error using the 80-20 split validation set approach   3.3 Estimating testing error using 5-fold cross validation   3.4 Estimating testing error using LOOCV   3.5 Conclusion: whether the final MLR model better than the initial  
+
+4 Prediction competition  
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 # load relevant libraries: 
@@ -44,55 +26,65 @@ library(corrplot) # for correlation plot
 library(leaps) # for Best Subset Selection 
 ```
 
-
----------------------------------------------------------------------------------
+------------------------------------------------------------------------
 
 # 1 Descriptive analysis of the data set
 
-
 ## 1.1 Data loading and cleaning
 
-There are 18640 data points in the original data set. There are 10 features being observed and/or recorded, inclduing the response variable, Median House Value ("medianHouseValue"). 
+There are 18640 data points in the original data set. There are 10 features being observed and/or recorded, inclduing the response variable, Median House Value ("medianHouseValue").
+
 ```{r}
 data <- read.csv("Assignt1_data.csv") 
-# View(data) 
 dim(data) 
 str(data) 
-# summary(data) --> don't think we should present this one 
-# head(data)
 # data$oceanProximity <- as.factor(data$oceanProximity)
 ```
 
-When inspecting the orginal data, we observe that there are 190 rows that have missing values (NA's) in the varaible "aveBedrooms". Since this is not a large proportion of our data (190 out of 18640), we decided to delete these rows that contains NA's for consistency and simplicity. 
+When inspecting the orginal data, we observe that there are 190 rows that have missing values (NA's) in the varaible "aveBedrooms". Since this is not a large proportion of our data (190 out of 18640), we decided to delete these rows that contains NA's for consistency and simplicity.
+
 ```{r }
 incomplete_rows <- data[!complete.cases(data), ] 
 data <- na.omit(data) 
 rownames(data) <- 1:nrow(data) 
 ```
 
-
 ## 1.2 Preliminary analysis on the data
 
-### 1.2.1 Histogram on the response variable and data censoring   
+### 1.2.1 Histogram on the response variable and data censoring
 
 ```{r}
 hist(data$medianHouseValue,
      xlab = "Median House Value ($)",
      ylab = "Frequency",
-     main = "Hostogram of Median House Value",
+     main = "Histogram of Median House Value",
      breaks = 25)
 ```
-From the histogram, it is evident that the medianHouseValue exhibits right-skewness. Interestingly, there are visibly a concentration of values at the right-end, where the bin for the house value of \$500,000 is disproportionately tall. This is likely due to data censoring, where all the medianHouseValue over a certain threshold is recorded at a capped value around \$500,000. 
 
-Through further inspection we find out this cap for censoring is at $50,0001. 
+From the histogram, it is evident that the medianHouseValue exhibits right-skewness. Interestingly, there are visibly a concentration of values at the right-end, where the bin for the house value of \$500,000 is disproportionately tall. This is likely due to data censoring, where all the medianHouseValue over a certain threshold is recorded at a capped value around \$500,000.
+
+Through further inspection we find out this cap for censoring is at \$500,001.
+
 ```{r}
 value <- max(data$medianHouseValue)  
 percentage <- mean(data$medianHouseValue == value) * 100
 cat("Percentage of data with medianHouseValue =", value, "is", percentage, "%\n")
+summary(data$medianHouseValue)
 ```
 
+Other censoring
 
-### 1.2.2 Correlations among variables 
+```{r}
+summary(data$medianIncome)
+value <- max(data$medianIncome)  
+percentage <- mean(data$medianIncome == value) * 100
+cat("Percentage of data with medianIncome =", value, "is", percentage, "%\n")
+
+```
+It's clear that medianIncome is also censored. Both medianIncome and medianHouseValue are both left censored and right censored, since it is more significant, for this report we will focus on right censoring.medianHouseValue is also more significant so we can focus on that.
+
+
+### 1.2.2 Correlations among variables
 
 ```{r}
 numeric.data <- data[sapply(data, is.numeric)]
@@ -102,16 +94,16 @@ numeric.data <- numeric.data[, !names(numeric.data) %in% c("id")]
 cor_matrix <- cor(numeric.data)
 corrplot(cor(cor_matrix), method = "circle")
 ```
-From the correlation matrix plot we can see that among all the predictors, medianHouseValue has highest correlation with Median Income. This is pretty intuitive, as we expect high-income households purchasing more expensive houses. \ 
 
-Longitude and Latitude are highly negatively correlated, while Average Rooms and Average Bedrooms are highly positively correlated. This multicollinearity can lead to issues such as unstable coefficient estimates and inflated standard errors, as the model struggles to distinguish the individual effects of highly correlated predictors. Consequently, the interpretability of the regression results is compromised. We will address this issue later in section 2.4 Model improvements. \ 
+From the correlation matrix plot we can see that among all the predictors, medianHouseValue has highest correlation with Median Income. This is pretty intuitive, as we expect high-income households purchasing more expensive houses.  
 
-Note that ID is just for labellng purposes and it is not a relevant predictor, so we don't care about the correlation between ID and other variables. 
+Longitude and Latitude are highly negatively correlated, while Average Rooms and Average Bedrooms are highly positively correlated. This multicollinearity can lead to issues such as unstable coefficient estimates and inflated standard errors, as the model struggles to distinguish the individual effects of highly correlated predictors. Consequently, the interpretability of the regression results is compromised. We will address this issue later in section 2.4 Model improvements.  
 
+Note that ID is just for labellng purposes and it is not a relevant predictor, so we don't care about the correlation between ID and other variables.
 
-### 1.2.3 Geospacial plot of medianHouseValue 
+### 1.2.3 Geospacial plot of medianHouseValue
 
-Housing values can vary based on their proximity to major cities. By analyzing the provided longitude and latitude, we can deduce that the dataset originates from California. To visualize the relative variation in median house values, we create a heatmap that highlights the influence of major cities, specifically Los Angeles (LA) and San Francisco (SF). 
+Housing values can vary based on their proximity to major cities. By analyzing the provided longitude and latitude, we can deduce that the dataset originates from California. To visualize the relative variation in median house values, we create a heatmap that highlights the influence of major cities, specifically Los Angeles (LA) and San Francisco (SF).
 
 ```{r}
 cities <- data.frame(
@@ -142,10 +134,10 @@ ggplot(data,
        colour = "House Value") + 
   theme_minimal() 
 ```
-Clearly, median housing value is higher in the SF and LA regions. Therefore, it is reasonable to integrate a region's closeness to these major cities in our regression model later. 
 
+Clearly, median housing value is higher in the SF and LA regions. Therefore, it is reasonable to integrate a region's closeness to these major cities in our regression model later. They are also an appropriate proxy for censoring.
 
-### 1.2.4 Plots of the response variable vs different features 
+### 1.2.4 Plots of the response variable vs different features
 
 ```{r}
 target_col <- "medianHouseValue"
@@ -160,18 +152,18 @@ for (col in names(data)) {
   }
 }
 ```
-Median House Value vs longitude/latitude: there is no clear linear relationship or overall trend. But we can see that for some specific longtitude/latitude the housing value is higher. This is consistent with our findings in the geospacial plot - the peaks in the above plot has to do with the relative location to major cities, SF and LA. This motivates us to do some transformation on the raw longitude and latitude data while integrating relevant information in the MLR framwork later on.  \ 
 
-Median House Value vs Housing Media Age: No clear pattern again just by looking at the plot. However the high density of data on the rightmost band (representiing housingMedianAge = 52) shows another sign of data censoring. \ 
+Median House Value vs longitude/latitude: there is no clear linear relationship or overall trend. But we can see that for some specific longtitude/latitude the housing value is higher. This is consistent with our findings in the geospacial plot - the peaks in the above plot has to do with the relative location to major cities, SF and LA. This motivates us to do some transformation on the raw longitude and latitude data while integrating relevant information in the MLR framwork later on.  
+
+Median House Value vs Housing Media Age: No clear pattern again just by looking at the plot. However the high density of data on the rightmost band (representing housingMedianAge = 52) shows another sign of data censoring.  
 
 ```{r}
 # Should we truncate the age groups? 
 ```
 
+Median House Value vs Average Rooms / Average Bedrooms: The linear pattern is not clear when we plot against the entire data range for rooms. These two plots exposes some issue of high leverage points - some regions have average number of bedrooms over 30 and average number of rooms over 140. These abnormalities are worthy to be investigated and treated when we fit the MLR.  
 
-Median House Value vs Average Rooms / Average Bedrooms: The linear pattern is not clear when we plot against the entire data range for rooms. These two plots exposes some issue of high leverage points - some regions have average number of bedrooms over 30 and average number of rooms over 140. These abnormalities are worthy to be investigated and treated when we fit the MLR. \ 
-
-```{r} 
+```{r}
 # Should we comment further on this in the report? Even if zoom in the trend not clear 
 # Focus on the range of [0, 20] for aveRooms 
 plot(data$aveBedrooms, data$medianHouseValue, 
@@ -182,7 +174,7 @@ plot(data$aveBedrooms, data$medianHouseValue,
      cex = 0.3) 
 ```
 
-Median House Value vs Population: The relationship appear non-linear even if we zoom in to the population data range 0 to 5000: \ 
+Median House Value vs Population: The relationship appear non-linear even if we zoom in to the population data range 0 to 5000:  
 
 ```{r}
 plot(data$population, data$medianHouseValue, 
@@ -193,14 +185,14 @@ plot(data$population, data$medianHouseValue,
      cex = 0.3) 
 ```
 
-Median House Value vs Median Income: We can see some clear positive trend. This resonates with the correlation plot result, where these two features are positively correlated.  \ 
+Median House Value vs Median Income: We can see some clear positive trend. This resonates with the correlation plot result, where these two features are positively correlated.  
 
-For those pairs where linear relationship is unclear, we will explore log transformations and polynomials in section 1.2.6 single linear regression.  
-
+For those pairs where linear relationship is unclear, we will explore log transformations and polynomials in section 1.2.6 single linear regression.
 
 ### 1.2.5 Boxplot of Median House Value by Ocean Proximity
 
-For the qualitative variable, Ocean Proximity, we can examine the differences across different classes via a boxplot: 
+For the qualitative variable, Ocean Proximity, we can examine the differences across different classes via a boxplot:
+
 ```{r}
 boxplot(medianHouseValue ~ oceanProximity, data = data,
         main = "Boxplot of Median House Value by Ocean Proximity",
@@ -208,78 +200,16 @@ boxplot(medianHouseValue ~ oceanProximity, data = data,
         ylab = "Median House Value",
         col = "lightblue")
 ```
-From the plot, island housing appears to be most valuable on average, whereas inland housing appears to be least valuable. The median value for other 3 classes (<1h ocean, near bay and near ocean) seems to be close to each other. 
 
+From the plot, island housing appears to be most valuable on average, whereas inland housing appears to be least valuable. The median value for other 3 classes (\<1h ocean, near bay and near ocean) seems to be close to each other.
 
 ### 1.2.6 More exploring: key results from single linear regression (Feel like this can be put into 2.3 as well?)
 
-individual pair of relationships are all statistically significant: 
+individual pair of relationships are all statistically significant:
 
 But some assumptions necessary for OLS are clearly violated (e.g. heteroskedasiticty, )
 
-Some relationships are clearly non-linear so have to consider transformations 
-
-
-
-```{r }
-# comment: I don't think we should report all of them below, just the important ones should suffice 
-# comment: I will keep the entire, original chunk here for now: 
-
-#Do each linear regression separately and view plots
-#longitude, clearly non-linear poly?
-lm.fit <- lm(medianHouseValue~longitude,data = data) 
-summary(lm.fit)
-plot(lm.fit)
-
-# latitude, again non-linear poly?
-lm.fit <- lm(medianHouseValue~latitude,data = data) 
-summary(lm.fit)
-plot(lm.fit)
-
-#housing median age - good fit for first graph
-lm.fit <- lm(medianHouseValue~housingMedianAge,data = data) 
-summary(lm.fit)
-plot(lm.fit)
-
-#aveRooms, definitely non-linear, big issue with high leverage points
-lm.fit <- lm(medianHouseValue~aveRooms,data = data) 
-summary(lm.fit)
-plot(lm.fit)
-
-
-#aveBedrooms, issue with high leverage points
-lm.fit <- lm(medianHouseValue~aveBedrooms,data = data) 
-summary(lm.fit)
-plot(lm.fit)
-
-#population, issues with leverage, heterscedascity
-lm.fit <- lm(medianHouseValue~population,data = data) 
-summary(lm.fit)
-plot(lm.fit)
-
-#medianIncome non-linear and heterscedascity, some influential points too
-lm.fit <- lm(medianHouseValue~medianIncome,data = data) 
-summary(lm.fit)
-plot(lm.fit)
-
-#oceanProximity catergorical and need to play around with this a bit
-lm.fit <- lm(medianHouseValue~oceanProximity,data = data) 
-summary(lm.fit)
-plot(lm.fit)
-
-# Keep medianIncome the same
-#playing around a bit
-#medianIncome non-linear and heterscedascity, some influential points too
-#better
-lm.fit <- lm(medianHouseValue~log(medianIncome),data = data) 
-summary(lm.fit)
-plot(lm.fit)
-
-#poly 2 looks pretty good, better than log
-lm.fit <- lm(medianHouseValue~poly(medianIncome,2),data = data) 
-summary(lm.fit)
-plot(lm.fit)
-```
+Some relationships are clearly non-linear so have to consider transformations
 
 ```{r}
 ## MOST IMPORTANT BITS
@@ -290,48 +220,27 @@ lm.fit <- lm(medianHouseValue~log(population),data = data)
 summary(lm.fit)
 plot(lm.fit)
 
-lm.fit <- lm(medianHouseValue~bedroomsPerRoom,data = data) 
-summary(lm.fit)
-plot(lm.fit)
-
-lm.fit <- lm(medianHouseValue~aveBedroomsPerRoom,data = data) 
-summary(lm.fit)
-plot(lm.fit)
 ```
+------------------------------------------------------------------------
 
+# 2 Multiple linear regression
 
+## 2.1 Initial MLR model using all appropriate predictors
 
-------------------------------------------------------------------------------------------------------------------------
+We will be using the all the given predictors except for id, since it is irrelevant.
 
-# 2 Multiple linear regression 
-
-## 2.1 Initial MLR model using all appropriate predictors  
-
-We will be using the all the given predictors except for id, since it is irrelevant. 
 ```{r}
 initial_fit <- lm(data$medianHouseValue ~. - id, data = data) 
 summary(initial_fit)
 ```
 
+## 2.2 Discussion of the initial model
 
-## 2.2 Discussion of the initial model 
+The p-value of the F-test is practically zero, therefore we have sufficient evidence to reject the null hypothesis that all regression coefficients are zero. This means that the model has overall significance, and that at least one of the predictors are useful in explaining the variation in medianHouseValue.  
 
-The p-value of the F-test is practically zero, therefore we have sufficient evidence to reject the null hypothesis that all regression coefficients are zero. This means that the model has overall significance, and that at least one of the predictors are useful in explaning the variation in medianHouseValue.  \ 
+Having concluded that this model (initial_fit) has overall significance, we can gauge the significance of individual predictors through the t-test p-values:   At 5% level of significance, we cannot say that population is useful, as we do not have sufficient evidence to reject the null hypothesis that its corresponding coefficient is non-zero. The dummy variable, "NEAR BAY", associated to the categorical predictor, "oceanProximity", is also shown to be insignificant. This might be an indication that comparing to the base case (\<1H OCEAN), NEAR BAY does not lead to significant change in Median House Price.
 
-Having concluded that this model (initial_fit) has overall significance, we can gauge the significance of individual predictors through the t-test p-values:  \ 
-At 5% level of significance, we cannot say that population is useful, as we do not have sufficient evidence to reject the null hypothesis that its corresponding coefficient is non-zero. The dummy variable, "NEAR BAY", associated to the categorical predictor, "oceanProximity", is also shown to be insignificant. This might be an indication that comparing to the base case (<1H OCEAN), NEAR BAY does not lead to significant change in Median House Price. 
-
-
-## 2.3 Checking issues in the initial model 
-
-
-
-
-
-
-
-
-
+## 2.3 Checking issues in the initial model
 
 ```{r }
 
@@ -378,64 +287,11 @@ data$dirToLA <- NULL
 data$dirToSF <- NULL
 
 data$cityProximityScore <- 1 / (1 + data$distToLA) + 1 / (1 + data$distToSF)
-
-
-lm.fit <- lm(medianHouseValue~.-id-bedroomsPerRoom-distToCenter-incomePerRoom-distToSF-distToSF-sinDirToSF-sinDirToLA-cosDirToLA-cosDirToSF-cityProximityScore,data = data) # ID not a relevant predictor
-summary(lm.fit)y
-# population (population in particular) and island and near bay look iffy
-deviance(lm.fit)
-contrasts(data$oceanProximity)
-
-
-plot(lm.fit)
-# some outliers/leverage points
-# clear heteroscedasticity
-
-
-# Checking Collinearity
-library(car)
-vif(lm.fit)
-
-# Correlation matrix
-numeric_vars <- data[sapply(data, is.numeric)]
-cor_matrix <- cor(numeric_vars, use = "complete.obs")
-round(cor_matrix, 2)
-
-#Long and lat highly correlated, so are ave rooms and ave bedrooms
-# can create a bedrooms to rooms ratio and include that. Or just exclude one
-# also test exclude the houses with like 40 rooms, could be leverage point
-# or can do interaction term?? This might be simpler. See which one is better after testing
-
-library(leaps)
-#test
-
-regfit.full=regsubsets(medianHouseValue~.-id,data = data,nvmax =12)
-summary(regfit.full)
-
-
-# Choosing the best from the linear model
-reg.summary=summary(regfit.full)
-names(reg.summary)
-reg.summary$rsq
-par(mfrow=c(2,2))
-plot(reg.summary$rss,xlab="Number of Variables",ylab="RSS",type="l")
-plot(reg.summary$adjr2,xlab="Number of Variables",ylab="Adjusted RSq",type="l")
-# Find out the case with maximal adjusted R^2
-which.max(reg.summary$adjr2)
-# Draw points in the latest plot
-points(12,reg.summary$adjr2[12], col="red",cex=2,pch=20) #Look at graph to choose best value of k, i.e. highest adjRsq
-plot(reg.summary$cp,xlab="Number of Variables",ylab="Cp",type='l')
-which.min(reg.summary$cp)
-points(12,reg.summary$cp[10],col="red",cex=2,pch=20)
-plot(reg.summary$bic,xlab="Number of Variables",ylab="BIC",type='l')
-which.min(reg.summary$bic)
-points(which.min(reg.summary$bic),reg.summary$bic[which.min(reg.summary$bic)],col="red",cex=2,pch=20) #a better way
-
-
 ```
 
 New function - Must run to run next chunk
-``` {r}
+
+```{r}
 library(leaps)
 #since can't call predict for regsubsets. doing the same thing as the for loop
 predict.regsubsets=function(object,newdata,id,...){ #... allows for other arguments to be passed into the function
@@ -449,6 +305,7 @@ predict.regsubsets=function(object,newdata,id,...){ #... allows for other argume
 ```
 
 # Choosing the best subset for new linear model
+
 ```{r, echo=FALSE}
 
 library(car)
@@ -495,9 +352,9 @@ vif(model.best,type = "predictor")
 regfit <- regsubsets(formula.best,data = data,nvmax =length(coef(model.best)))
 ```
 
-
 # Adding in oceanProximity
-``` {r}
+
+```{r}
 # With oceanProximity
 # best so far
 #oceanProximity+oceanProximity:medianIncome+housingMedianAge:oceanProximity+log(population):oceanProximity+latitude
@@ -520,9 +377,6 @@ names(coef(model.best))
 #regfit.full=regsubsets(new.formula,data = data,nvmax =length(coef(model.best)))
 #summary(regfit.full)
 ```
-
-
-
 
 #Ridge regression
 
@@ -549,73 +403,6 @@ coef(ridge.model)
 ```
 
 ```{r}
-
-# LASSO PLR
-pca_result <- prcomp(x, center = TRUE, scale. = TRUE)
-explained_var <- cumsum(pca_result$sdev^2) / sum(pca_result$sdev^2)
-n_components <- which(explained_var >= 0.95)[1]
-x_pca <- pca_result$x[, 1:n_components]
-
-
-set.seed(17)
-lambda_grid <- 10^seq(4, -4, length = 100)  # From 10,000 down to 0.0001
-cv.lasso = cv.glmnet(x_pca, y, alpha = 1,lambda = lambda_grid, nfolds = 10)
-
-# Extract best lambda (lambda.min gives lambda with minimum MSE)
-best.lambda.pca = cv.lasso$lambda.1se
-
-lasso.pca.model = glmnet(x_pca, y, alpha = 1, lambda = best.lambda.pca)
-coef(lasso.pca.model) 
-
-# Lasso PLS
-set.seed(12)
-plsr_model <- plsr(new.formula, data = data, scale = TRUE, validation = "CV")
-summary(plsr_model)
-msep_vals <- RMSEP(plsr_model)$val[1, 1, ]  # Extract MSEP values
-n_comp <- which.min(msep_vals)  # Index of lowest MSEP
-x_pls <- scores(plsr_model)[, 1:pmin(n_comp,ncol(scores(plsr_model)))]
-y <- data$medianHouseValue
-
-# Perform 10-fold cross-validation to find the best lambda
-set.seed(15)
-lambda_grid <- 10^seq(4, -4, length = 100)  # From 10,000 down to 0.0001
-cv.lasso = cv.glmnet(x_pls, y, alpha = 1,lambda = lambda_grid, nfolds = 10)
-
-# Extract best lambda (lambda.min gives lambda with minimum MSE)
-best.lambda.pls = cv.lasso$lambda.1se
-
-lasso.pls.model = glmnet(x_pls, y, alpha = 1, lambda = best.lambda.pls)
-coef(lasso.pls.model) 
-
-
-
-# Lasso PLS
-set.seed(12)
-plsr_model <- plsr(new.formula, data = data, scale = TRUE, validation = "CV")
-summary(plsr_model)
-msep_vals <- RMSEP(plsr_model)$val[1, 1, ]  # Extract MSEP values
-n_comp <- which.min(msep_vals)  # Index of lowest MSEP
-x_pls <- scores(plsr_model)[, 1:pmin(n_comp,ncol(scores(plsr_model)))]
-y <- data$medianHouseValue
-
-# Perform 10-fold cross-validation to find the best lambda
-set.seed(15)
-lambda_grid <- 10^seq(4, -4, length = 100)  # From 10,000 down to 0.0001
-cv.lasso = cv.glmnet(x_pls, y, alpha = 1,lambda = lambda_grid, nfolds = 10)
-
-# Extract best lambda (lambda.min gives lambda with minimum MSE)
-best.lambda.pls = cv.lasso$lambda.1se
-
-lasso.pls.model = glmnet(x_pls, y, alpha = 1, lambda = best.lambda.pls)
-coef(lasso.pls.model) 
-
-```
-
-
-
-
-
-``` {r}
 
 test_data <- read.csv("Assignt1_test full.csv")
 test_data$bedroomsPerRoom <- test_data $aveBedrooms / test_data $aveRooms
@@ -648,20 +435,14 @@ test_data$dirToLA <- NULL
 test_data$dirToSF <- NULL
 
 test_data$cityProximityScore <- 1 / (1 + test_data$distToLA) + 1 / (1 + test_data$distToSF)
-
-
-lm.fit <- lm(medianHouseValue~.-id-bedroomsPerRoom-distToCenter-incomePerRoom-distToSF-distToSF-sinDirToSF-sinDirToLA-cosDirToLA-cosDirToSF-cityProximityScore,data = data) # ID not a relevant predictor
-
-
-
+test_data$incomeFlag <- ifelse(test_data$medianIncome == 15.0001, 1, 0)
 
 actual <- test_data$medianHouseValue
 
 
 pred <- pmax(pmin(pred,500001),14999)
 #OG
-lm.fit <- lm(medianHouseValue~.-id-bedroomsPerRoom-distToCenter-incomePerRoom-distToSF-distToSF,data = data)
-pred <- predict(lm.fit, newdata = test_data  )
+pred <- predict(initial_fit, newdata = test_data  )
 pred <- pmax(pmin(pred,500001),14999)
 og_mse <- mean((pred - actual)^2)
 og_mse
@@ -684,49 +465,6 @@ ridge_mse
 
 ```
 
-
 # Best so far with censoring
-[1] 4548677455
-[1] 3763439107
-[1] 3856612972
 
-
-
-```{r}
-
-#lasso pcr
-x_new <- model.matrix(new.formula, data = test_data)[, -1]
-x_new_scaled <- scale(x_new, center = pca_result$center, scale = pca_result$scale)
-x_new_pca <- x_new_scaled %*% pca_result$rotation
-x_new_pca <- x_new_pca[, 1:n_components]
-
-pred<- predict(lasso.pca.model, s = best.lambda.pca, newx = x_new_pca)
-
-lasso_pca_mse <- mean((pred - actual)^2)
-lasso_pca_mse
-
-
-# lasso pls
-# Ensure oceanProximity in test_data is a factor with same levels
-test_data$oceanProximity <- factor(test_data$oceanProximity, levels = levels(data$oceanProximity))
-
-X_test_pls <- predict(plsr_model, newdata = test_data, type = "scores")[, 1:pmin(n_comp,ncol(scores(plsr_model)))]
-
-
-# b. Predict using LASSO model
-pred <- as.vector(predict(lasso.pls.model, newx = X_test_pls))
-
-
-lasso_pls_mse <- mean((pred - actual)^2)
-lasso_pls_mse
-
-
-
-```
-
-
-
-
-
-
-
+[1] 4548677455 [1] 3763439107 [1] 3856612972
