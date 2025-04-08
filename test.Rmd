@@ -32,7 +32,7 @@ library(leaps) # for Best Subset Selection
 
 ## 1.1 Data loading and cleaning
 
-There are 18640 data points in the original data set. There are 10 features being observed and/or recorded, inclduing the response variable, Median House Value ("medianHouseValue").
+There are 18640 data points in the original data set. There are 10 features being observed and/or recorded, including the response variable, Median House Value ("medianHouseValue").
 
 ```{r}
 data <- read.csv("Assignt1_data.csv") 
@@ -41,7 +41,7 @@ str(data)
 # data$oceanProximity <- as.factor(data$oceanProximity)
 ```
 
-When inspecting the orginal data, we observe that there are 190 rows that have missing values (NA's) in the varaible "aveBedrooms". Since this is not a large proportion of our data (190 out of 18640), we decided to delete these rows that contains NA's for consistency and simplicity.
+When inspecting the original data, we observe that there are 190 rows that have missing values (NA's) in the varaible "aveBedrooms". Since this is not a large proportion of our data (190 out of 18640), we decided to delete these rows that contains NA's for consistency and simplicity.
 
 ```{r }
 incomplete_rows <- data[!complete.cases(data), ] 
@@ -81,18 +81,24 @@ percentage <- mean(data$medianIncome == value) * 100
 cat("Percentage of data with medianIncome =", value, "is", percentage, "%\n")
 
 ```
-It's clear that medianIncome is also censored. Both medianIncome and medianHouseValue are both left censored and right censored, since it is more significant, for this report we will focus on right censoring.medianHouseValue is also more significant so we can focus on that.
 
+It's clear that medianIncome is also censored. Both medianIncome and medianHouseValue are both left censored and right censored, since it is more significant, for this report we will focus on right censoring.medianHouseValue is also more significant so we can focus on that.
 
 ### 1.2.2 Correlations among variables
 
 ```{r}
-numeric.data <- data[sapply(data, is.numeric)]
-numeric.data <- numeric.data[, !names(numeric.data) %in% c("id")]
-# head(numeric.data)
-
-cor_matrix <- cor(numeric.data)
-corrplot(cor(cor_matrix), method = "circle")
+numeric.data <-  data[sapply(data, is.numeric)]
+head(numeric.data)
+cor_medianHouseValue <- cor(data$medianHouseValue, 
+                            data[, c("longitude", 
+                                            "latitude", 
+                                            "housingMedianAge",
+                                            "aveRooms",
+                                            "aveBedrooms",
+                                            "population",
+                                            "medianIncome")])
+print(cor_medianHouseValue)
+corrplot(cor(data[, sapply(data, is.numeric)]), method = "circle")
 ```
 
 From the correlation matrix plot we can see that among all the predictors, medianHouseValue has highest correlation with Median Income. This is pretty intuitive, as we expect high-income households purchasing more expensive houses.  
@@ -221,6 +227,7 @@ summary(lm.fit)
 plot(lm.fit)
 
 ```
+
 ------------------------------------------------------------------------
 
 # 2 Multiple linear regression
@@ -241,6 +248,86 @@ The p-value of the F-test is practically zero, therefore we have sufficient evid
 Having concluded that this model (initial_fit) has overall significance, we can gauge the significance of individual predictors through the t-test p-values:   At 5% level of significance, we cannot say that population is useful, as we do not have sufficient evidence to reject the null hypothesis that its corresponding coefficient is non-zero. The dummy variable, "NEAR BAY", associated to the categorical predictor, "oceanProximity", is also shown to be insignificant. This might be an indication that comparing to the base case (\<1H OCEAN), NEAR BAY does not lead to significant change in Median House Price.
 
 ## 2.3 Checking issues in the initial model
+
+```{r}
+par(mfrow = c(2,2))
+plot(initial_fit, cex = 0.1)
+```
+
+### 2.3.1 Residual Plot:
+
+The residual plot shows that the points are not quite randomly scattered around zero. This means that the homoskedasiticity and linear assumption might be questionable. To address non-linearity, we can consider polynomial terms or interactions.
+
+The funnel shape (the spread of residuals seems to increase as the fitted values increase) within the fitted value range (0, 400000) strengthens my doubt of heteroskedasticity. We may consider transforming some of our predictors later.
+
+There are some outliers in the residuals that are far away from zero. These influential points may be high-leverage or outliers or both - should be investigated later.
+
+```{r}
+par(mfrow = c(1, 1)) 
+options(scipen = 999) 
+plot(initial_fit, which = 1, cex = 0.2, pch = 16, cex.axis = 0.6,
+     main = "Residual Plot (Residual vs Fitted) of Fit1 (using all Predictors)") 
+```
+
+### 2.3.2 QQ Plot for Residuals:
+
+A key assumption behind generalized linear model is that the error term is normally distributed. This is why t-statistics and F-statistics can be used in our previous testing.
+
+T-stats are robust under some mild deviation from normality, but under extreme non-normality, these statistics become less reliable.
+
+In our plot, the points deviates from the reference line (dashed line) for larger and smaller quantiles (roughly outside of this range: (-2, 1.5)), indicating non-normality (especially high skewness) and influence of outliers especially at the tails.
+
+```{r}
+plot(initial_fit, which = 2, cex = 0.2, pch = 16, cex.axis = 0.8,
+     main = "(Normal) QQ Plot of Fit1 (using all Predictors)") 
+```
+
+### 2.3.3 Outliers
+
+Outlier identification: as a rule of thumb, we consider those whose studentised residual has a magnitude greater than 3 as outliers here.
+
+However we cannot just simply remove the outliers in this case. This is because these outliers could be attributable to model specification or other problems. We will see what we can do with the model selection and then can come back to this later.
+
+```{r}
+residuals_initial_fit <- residuals(initial_fit)
+stdresiduals_initial_fit <- rstandard(initial_fit)
+outlier_row_number <- which(abs(stdresiduals_initial_fit) > 3)
+
+length(outlier_row_number) # gives how many outliers are there 
+```
+
+### 2.3.4 High Leverage Points
+
+We will compute the leverage statistic hi and to see whether it is \>\> (p + 1)/n. Where p is the number of predictors in the model and n is the sample size.
+
+Having 3,317 high leverage points out of 18,450 data points means that about 18% of the data has high leverage. This indicates that our regression line can change dramatically with small changes in the predictors. One possible reason is that we are overfitting the data - and a reason to this is having too many predictor variables.
+
+```{r}
+leverage_values <- hatvalues(initial_fit)
+
+p_lvg <- length(coef(initial_fit)) 
+n_lvg <- nrow(data) 
+threshold_lvg <- (p_lvg + 1) / n_lvg
+
+highlvg_row_number <- which(leverage_values > threshold_lvg)
+# highlvg_row_number 
+length(highlvg_row_number)
+
+plot(leverage_values, type = "h", col = "blue")
+abline(h = 2 * mean(leverage_values), col = "red")
+```
+
+### 2.3.5 Collinearity
+
+The arbitrary threshold of severe collinearity is VIF greater or equal to 5. Here, all the predictors are shown to have a non-severe VIF. However, Longitude and Latitude shows relatively high VIF comparing to other predictors - a cause of this is the high correlation between the two.
+
+```{r}
+vif(initial_fit)
+```
+
+## 2.4 Model Improvements
+
+### 2.4.1 New predictors added
 
 ```{r }
 
@@ -289,6 +376,8 @@ data$dirToSF <- NULL
 data$cityProximityScore <- 1 / (1 + data$distToLA) + 1 / (1 + data$distToSF)
 ```
 
+### 2.4.3 Best subset selection with new predictors and interaction terms
+
 New function - Must run to run next chunk
 
 ```{r}
@@ -303,8 +392,6 @@ predict.regsubsets=function(object,newdata,id,...){ #... allows for other argume
 }
 
 ```
-
-# Choosing the best subset for new linear model
 
 ```{r, echo=FALSE}
 
@@ -352,7 +439,7 @@ vif(model.best,type = "predictor")
 regfit <- regsubsets(formula.best,data = data,nvmax =length(coef(model.best)))
 ```
 
-# Adding in oceanProximity
+### 2.4.3 Adding in oceanProximity to model
 
 ```{r}
 # With oceanProximity
@@ -378,7 +465,7 @@ names(coef(model.best))
 #summary(regfit.full)
 ```
 
-#Ridge regression
+### 2.4.4 Ridge Regression
 
 ```{r}
 
@@ -401,6 +488,14 @@ coef(ridge.model)
 
 
 ```
+
+### 2.5 Most significant predictors
+
+# 3 Assessing the model performance
+
+# 4 A Prediction Competition
+
+## 4.1 Test MSE for the 3 main models
 
 ```{r}
 
@@ -465,6 +560,12 @@ ridge_mse
 
 ```
 
-# Best so far with censoring
+best so far
 
-[1] 4548677455 [1] 3763439107 [1] 3856612972
+[1] 4548677455
+
+[1] 3763439107
+
+[1] 3856612972
+
+## 4.2 Chosen model and test MSE
