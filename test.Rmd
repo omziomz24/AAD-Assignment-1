@@ -34,7 +34,6 @@ library(stargazer) # for data presentation in 1.1
 
 ## 1.1 Data loading and cleaning
 
-
 There are 18640 data points in the original data set. There are 10 features being observed and/or recorded, inclduing the response variable, Median House Value ("medianHouseValue"). We also present the five-point summary for the numeric variables: 
 
 ```{r}
