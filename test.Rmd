@@ -67,12 +67,12 @@ Single linear regression
 ```{r }
 #Do each linear regression separately and view plots
 #longitude, clearly non-linear poly?
-lm.fit <- lm(medianHouseValue~longitude,data = data) 
+lm.fit <- lm(medianHouseValue~poly(longitude,3),data = data) 
 summary(lm.fit)
 plot(lm.fit)
 
 # latitude, again non-linear poly?
-lm.fit <- lm(medianHouseValue~latitude,data = data) 
+lm.fit <- lm(medianHouseValue~poly(latitude,3),data = data) 
 summary(lm.fit)
 plot(lm.fit)
 
@@ -129,10 +129,10 @@ lm.fit <- lm(medianHouseValue~log(population),data = data)
 summary(lm.fit)
 plot(lm.fit)
 
-
-lm.fit <- lm(medianHouseValue~bedroomsPerRoom,data = data) 
-summary(lm.fit)
-plot(lm.fit)
+# had to comment out for time being cause couldn't run this section - omar
+#lm.fit <- lm(medianHouseValue~bedroomsPerRoom,data = data) 
+#summary(lm.fit)
+#plot(lm.fit)
 
 ```
 
@@ -450,5 +450,4 @@ lasso_pls_mse
 [1] 4368520165
 [1] 5442228208
 [1] 4441052281
-
 
