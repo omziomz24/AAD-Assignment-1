@@ -42,6 +42,8 @@ library(ggplot2)
 library(car)
 library(corrplot) # for correlation plot 
 library(leaps) # for Best Subset Selection 
+# install.packages("stargazer") 
+library(stargazer) # for data presentation in 1.1 
 ```
 
 
@@ -52,18 +54,19 @@ library(leaps) # for Best Subset Selection
 
 ## 1.1 Data loading and cleaning
 
-There are 18640 data points in the original data set. There are 10 features being observed and/or recorded, inclduing the response variable, Median House Value ("medianHouseValue"). 
+There are 18640 data points in the original data set. There are 10 features being observed and/or recorded, inclduing the response variable, Median House Value ("medianHouseValue"). We also present the five-point summary for the numeric variables: 
 ```{r}
 data <- read.csv("Assignt1_data.csv") 
 # View(data) 
 dim(data) 
-str(data) 
+stargazer(data[-1], summary = TRUE, type = "text")
+# str(data) 
 # summary(data) --> don't think we should present this one 
 # head(data)
 # data$oceanProximity <- as.factor(data$oceanProximity)
 ```
 
-When inspecting the orginal data, we observe that there are 190 rows that have missing values (NA's) in the varaible "aveBedrooms". Since this is not a large proportion of our data (190 out of 18640), we decided to delete these rows that contains NA's for consistency and simplicity. 
+When inspecting the orginal data, we observe that there are 190 rows that have missing values (NA's) in the varaible "aveBedrooms". Since using data points with missing values can lead ot baised results, and since 190 out of 18,640 data points is an imaterial proportion, we decided to remove these rows that contains NA's from the original data frame.
 ```{r }
 incomplete_rows <- data[!complete.cases(data), ] 
 data <- na.omit(data) 
@@ -84,12 +87,13 @@ hist(data$medianHouseValue,
 ```
 From the histogram, it is evident that the medianHouseValue exhibits right-skewness. Interestingly, there are visibly a concentration of values at the right-end, where the bin for the house value of \$500,000 is disproportionately tall. This is likely due to data censoring, where all the medianHouseValue over a certain threshold is recorded at a capped value around \$500,000. 
 
-Through further inspection we find out this cap for censoring is at $50,0001. 
 ```{r}
 value <- max(data$medianHouseValue)  
 percentage <- mean(data$medianHouseValue == value) * 100
 cat("Percentage of data with medianHouseValue =", value, "is", percentage, "%\n")
 ```
+
+Ultimately, given the max. value is 500,001 and the fact that the frequency of this exact value is disproportionately high (4.7%), we are led to conclude that 500,001 is the censoring cap applied. This is likely due to the data collection methods used, where houses valued above \$500,000 were simply reported as exactly $500,001. The impact of this is that the data may under-represent the true values and variation in higher-value homes. Moving forward, we have decided to keep these censored observations in but will maintain caution - especially in our interpretation of correlations, and coming to terms with the fact that our model will not be able to provide reliable predictions for values above 500,001.
 
 
 ### 1.2.2 Correlations among variables 
@@ -106,7 +110,9 @@ From the correlation matrix plot we can see that among all the predictors, media
 
 Longitude and Latitude are highly negatively correlated, while Average Rooms and Average Bedrooms are highly positively correlated. This multicollinearity can lead to issues such as unstable coefficient estimates and inflated standard errors, as the model struggles to distinguish the individual effects of highly correlated predictors. Consequently, the interpretability of the regression results is compromised. We will address this issue later in section 2.4 Model improvements. \ 
 
-Note that ID is just for labellng purposes and it is not a relevant predictor, so we don't care about the correlation between ID and other variables. 
+THe rest correlations between the remaining variables with medianHouseValue have a magnitude below 0.3. However, they may still be very useful in predicting the response variable. But we do not give detailed discussion here. \ 
+
+Note that ID is just for labellng purposes and it is not a relevant predictor, so we don't care about the correlation between ID and other variables and hence do not include it in our correlation matrix plot. \ 
 
 
 ### 1.2.3 Geospacial plot of medianHouseValue 
@@ -319,17 +325,21 @@ summary(initial_fit)
 The p-value of the F-test is practically zero, therefore we have sufficient evidence to reject the null hypothesis that all regression coefficients are zero. This means that the model has overall significance, and that at least one of the predictors are useful in explaning the variation in medianHouseValue.  \ 
 
 Having concluded that this model (initial_fit) has overall significance, we can gauge the significance of individual predictors through the t-test p-values:  \ 
-At 5% level of significance, we cannot say that population is useful, as we do not have sufficient evidence to reject the null hypothesis that its corresponding coefficient is non-zero. The dummy variable, "NEAR BAY", associated to the categorical predictor, "oceanProximity", is also shown to be insignificant. This might be an indication that comparing to the base case (<1H OCEAN), NEAR BAY does not lead to significant change in Median House Price. 
+At 5% level of significance, we cannot say that population is useful, as we do not have sufficient evidence to reject the null hypothesis that its corresponding coefficient is non-zero. The dummy variable, "NEAR BAY", associated to the categorical predictor, "oceanProximity", is also shown to be insignificant. This might be an indication that comparing to the base case (<1H OCEAN), NEAR BAY does not lead to significant change in Median House Price. A potential, real-world explanation of why nearbay might not be influential is that “bay” is a very broad concept; some could be more favourable than others (eg. close to amenities OR prone to environmental issues) so its hard to deduce a clear relationship between proximity to bay and house value\ 
+
+The R-squared and adjusted R-squared both equal to 0.617 when corrected to 3 decimal places. This means that 61.7% of the variation in the predictors are useful in explaining the variation in the response variable (medianHouseValue). \ 
+
+Additionally, this initial model also reveals some clear relationships among the varaibles: \  
+\begin{itemize}
+  \item Median income has a large, positive coefficient so its a strong positive predictor as we anticipated from the preliminary analysis. 
+  \item longitude and latitude both have large negative coefficients which reiterates our findings before regarding geographic (major cities) relevance. 
+\end{itemize}
+
+ 
+
 
 
 ## 2.3 Checking issues in the initial model 
-
-
-
-
-
-
-
 
 
 
