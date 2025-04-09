@@ -723,8 +723,8 @@ for (i in 1:k) {
   train_data <- data[train_indicies, ]
   test_data <- data[test_indicies, ]
   
-  train_set_init <- initial_data[train_indicies, ]
-  validation_set_init <- initial_data[-train_indicies, ]
+  train_data_init <- initial_data[train_indicies, ]
+  test_data_init <- initial_data[test_indicies, ]
   
   # Initial Model
   initial_cv_model <- lm(medianHouseValue ~ . - id, data=train_data_init)
