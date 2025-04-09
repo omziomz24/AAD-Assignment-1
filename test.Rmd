@@ -213,6 +213,7 @@ boxplot(medianHouseValue ~ oceanProximity, data = data,
 From the plot, island housing appears to be most valuable on average, whereas inland housing appears to be least valuable. The median value for other 3 classes (\<1h ocean, near bay and near ocean) seems to be close to each other.
 
 ### 1.2.6 Non-linear considerations
+
 SUE
 
 individual pair of relationships are all statistically significant:
@@ -237,15 +238,7 @@ plot(lm.log.pop)
 
 ```
 
-Please do this for:
-    I(medianIncome^2)
-    I(medianIncome^3) 
-    I(housingMedianAge^2)
-    I(latitude^2) 
-    I(longitude^2)
-    I(latitude^3) 
-    I(longitude^3)
-    log(population)
+Please do this for: I(medianIncome\^2) I(medianIncome\^3) I(housingMedianAge\^2) I(latitude\^2) I(longitude\^2) I(latitude\^3) I(longitude\^3) log(population)
 
 ------------------------------------------------------------------------
 
@@ -256,7 +249,11 @@ Please do this for:
 We will be using the all the given predictors except for id, since it is irrelevant.
 
 ```{r}
-initial_fit <- lm(data$medianHouseValue ~. - id, data = data) 
+# Initial_data is a copy of data
+initial_data <- read.csv("Assignt1_data.csv") 
+initial_data <- na.omit(initial_data)
+
+initial_fit <- lm(medianHouseValue ~ . - id, data = initial_data) 
 summary(initial_fit)
 ```
 
@@ -279,9 +276,9 @@ plot(initial_fit, cex = 0.1)
 
 ### 2.3.1 Residual Plot:
 
-The residual plot shows that the points are not quite randomly scattered around zero. This means that the homoskedasiticity and linear assumption might be questionable. To address non-linearity, we can consider polynomial terms or interactions.
+The residual plot shows that the points are not quite randomly scattered around zero. This means that the homoscedasiticity and linear assumption might be questionable. To address non-linearity, we can consider polynomial terms or interactions.
 
-The funnel shape (the spread of residuals seems to increase as the fitted values increase) within the fitted value range (0, 400000) strengthens my doubt of heteroskedasticity. We may consider transforming some of our predictors later.
+The funnel shape (the spread of residuals seems to increase as the fitted values increase) within the fitted value range (0, 400000) strengthens my doubt of heteroscedasticity. We may consider transforming some of our predictors later.
 
 There are some outliers in the residuals that are far away from zero. These influential points may be high-leverage or outliers or both - should be investigated later.
 
@@ -429,36 +426,67 @@ corrplot(cor(numeric.data), method = "circle")
 
 ```
 
-Interaction choices for the model Note: Some relate to covariance matrix others do not
+Interaction choices for the model
 
--   longitude:latitude The variables longitude and latitude are not strongly correlated with medianHouseValue on their own but show strong negative correlation with each other, but together they define a unique spatial location. Their interaction enables the model to capture regional effects that are not purely east-west or north-south, but a combination of both. The other reason why to include an interaction term is to reduce multi-collinearity between these two variables. This interaction represents the geographic positioning of each home, allowing the model to pick up spatial clusters in property value.
+Note: Some relate to covariance matrix others do not
 
--   bedroomsPerRoom:medianIncome bedroomsPerRoom is negatively correlated with medianIncome. Pairing them allows the model to test whether the quality or crowding of space varies in importance across income levels. This interaction captures how the value of spaciousness or room density changes depending on neighbourhood affluence.
+-   longitude:latitude
 
--   medianIncome:housingMedianAge medianIncome is strongly positively correlated with medianHouseValue, while housingMedianAge shows a weaker positive or near-zero correlation. The two variables are not strongly correlated with each other, making them suitable for interaction. This interaction captures whether wealth is concentrated in newer or older neighbourhoods, revealing how the relationship between income and housing value shifts with the age of the housing stock.
+    -   The variables longitude and latitude are not strongly correlated with medianHouseValue on their own but show strong negative correlation with each other, but together they define a unique spatial location. Their interaction enables the model to capture regional effects that are not purely east-west or north-south, but a combination of both.
 
--   distToCenter:medianIncome This interaction was chosen because it captures how the influence of income on housing value may vary with geographic centrality. High income in a central, urban location may signal access to premium markets, whereas high income in a peripheral location might reflect different lifestyle choices (e.g. rural affluence or luxury sprawl). This term allows the model to distinguish between urban wealth and suburban or rural wealth, identifying how location context changes the effect of income on house prices.
+    -   The other reason why to include an interaction term is to reduce multi-collinearity between these two variables. This interaction represents the geographic positioning of each home, allowing the model to pick up spatial clusters in property value.
 
--   latitude:incomePerRoom latitude and incomePerRoom are not highly correlated with each other. Including the interaction helps model spatial economic patterns that are not captured by either variable alone. This interaction reflects how the value of economic density varies along the north--south axis of California.
+-   bedroomsPerRoom:medianIncome
 
--   bedroomsPerRoom:distToLA bedroomsPerRoom and distToLA are weakly correlated with each other and with medianHouseValue. Their interaction enables the model to explore whether the meaning of room layout or density shifts based on urban proximity. This expresses how space efficiency is valued differently depending on distance from Los Angeles.
+    -   bedroomsPerRoom is negatively correlated with medianIncome. Pairing them allows the model to test whether the quality or crowding of space varies in importance across income levels. This interaction captures how the value of spaciousness or room density changes depending on neighbourhood affluence.
 
--   cityProximityScore:housingMedianAge cityProximityScore is positively correlated with medianHouseValue, and weakly so with housingMedianAge. Their interaction tests whether proximity to major cities boosts or dampens the value of older housing stock. This models whether older homes near urban centres are more desirable or more heavily discounted.
+-   medianIncome:housingMedianAge
 
--   cityProximityScore:bedroomsPerRoom These variables are weakly correlated with each other and allow the model to investigate if spatial efficiency (bedroom density) is more or less valuable near high-demand areas. This reflects how crowding or layout impacts price differently in urban versus more distant areas.
+    -   medianIncome is strongly positively correlated with medianHouseValue, while housingMedianAge shows a weaker positive or near-zero correlation. The two variables are not strongly correlated with each other, making them suitable for interaction. This interaction captures whether wealth is concentrated in newer or older neighbourhoods, revealing how the relationship between income and housing value shifts with the age of the housing stock.
 
--   housingMedianAge:incomePerRoom These two have low correlation but both relate to housing quality and socioeconomic context. Their interaction allows for the effect of economic density to vary depending on housing stock age. This models how the combination of compact affluence and housing maturity affects property value.
+-   distToCenter:medianIncome
+
+    -   This interaction was chosen because it captures how the influence of income on housing value may vary with geographic centrality. High income in a central, urban location may signal access to premium markets, whereas high income in a peripheral location might reflect different lifestyle choices (e.g. rural affluence or luxury sprawl). This term allows the model to distinguish between urban wealth and suburban or rural wealth, identifying how location context changes the effect of income on house prices.
+
+-   latitude:incomePerRoom
+
+    -   latitude and incomePerRoom are not highly correlated with each other. Including the interaction helps model spatial economic patterns that are not captured by either variable alone. This interaction reflects how the value of economic density varies along the north--south axis of California.
+
+-   bedroomsPerRoom:distToLA
+
+    -   bedroomsPerRoom and distToLA are weakly correlated with each other and with medianHouseValue. Their interaction enables the model to explore whether the meaning of room layout or density shifts based on urban proximity. This expresses how space efficiency is valued differently depending on distance from Los Angeles.
+
+-   cityProximityScore:housingMedianAge
+
+    -   cityProximityScore is positively correlated with medianHouseValue, and weakly so with housingMedianAge. Their interaction tests whether proximity to major cities boosts or dampens the value of older housing stock. This models whether older homes near urban centres are more desirable or more heavily discounted.
+
+-   cityProximityScore:bedroomsPerRoom
+
+    -   These variables are weakly correlated with each other and allow the model to investigate if spatial efficiency (bedroom density) is more or less valuable near high-demand areas. This reflects how crowding or layout impacts price differently in urban versus more distant areas.
+
+-   housingMedianAge:incomePerRoom
+
+    -   These two have low correlation but both relate to housing quality and socioeconomic context. Their interaction allows for the effect of economic density to vary depending on housing stock age. This models how the combination of compact affluence and housing maturity affects property value.
 
 -   The four interaction terms between medianIncome and directional components (cosDirToLA, sinDirToLA, cosDirToSF, sinDirToSF) were included to model how the effect of income on housing value changes depending on where a home is situated relative to Los Angeles and San Francisco. Income is the strongest individual predictor of housing value, but its impact is not spatially uniform. These directional interactions allow the model to account for how the purchasing power and market influence of income varies depending on urban proximity, regional economies, and land use patterns. In essence, they help capture whether income drives prices more strongly in certain directions, reflecting localised economic geographies and how spatial context modifies the effect of wealth.
 
 #### 2.4.2.2 Choosing non-linear terms
 
+-   log(medianIncome / distToCenter)
 
-ELOISE explaining these:
-log(medianIncome / distToCenter)
-I(medianIncome / housingMedianAge)
-log(incomePerRoom)
+    -   Dividing income by distance to center captures the economic value of location, higher income closer to the center is associated with more valuable housing. This term measures the "effective income" adjusted for geographic desirability. Log scaling reduces the impact of extreme values and helps linearise the relationship in the context of multi-linear regression. It ensures the model captures diminishing returns, the impact of a change in income or distance is smaller at higher levels.
 
+-   I(medianIncome / housingMedianAge)
+
+    -   Combining income with housing age highlights areas where economic resources are mismatched with infrastructure age. High income in areas with older housing can indicate redevelopment potential, while low income and old housing may correlate with lower prices.
+
+-   log(incomePerRoom) where incomePerRoom = medianIncome / aveRooms
+
+    -   Dividing income by average rooms captures income per unit of housing capacity. This reflects how wealth is distributed relative to housing size and can act as a proxy for crowding or luxury. Logging controls for skewed distributions and allows the model to interpret multiplicative effects additively. It helps the model distinguish between different housing market conditions more effectively, especially at the extremes of income or room size.
+
+-   All three terms are related to medianIncome because: medianIncome is the strongest individual predictor of house prices in the California Housing dataset.It has the highest correlation with medianHousevalue. Housing prices are highly influenced by local purchasing power, and income reflects the ability of residents to pay for housing. Modifying and combining medianIncome with other variables can reveal more complex and informative relationships that are not captured by the raw variable alone.
+
+-   See **1.2.6** for the justification of other non-linear terms used in the final model (i.e. log and polynomial transformations).
 
 ### 2.4.3 Best subset selection with new predictors and interaction terms
 
@@ -477,7 +505,7 @@ predict.regsubsets=function(object,newdata,id,...){ #... allows for other argume
 
 ```
 
-Checking whether all of the chosen predictors are worth adding.
+Checking whether all of the chosen predictors are worth adding. Do they result in the **best** model?
 
 ```{r, echo=FALSE}
 
@@ -565,31 +593,38 @@ vif(model.best,type = "predictor")
 
 ### 2.4.3 Adding in oceanProximity to model
 
-Eloise needs to add
+Since oceanProximity is a factor variable, best selection cannot be performed on it. Either all factors relating to oceanProximity are included or none are. Given the p-value's for the factors relating to oceanProximity in the initial model (2.1) are significant, in particular "Inland", oceanProximity will be included in the model.
+
+In additional to oceanProximity these two interaction terms have been added:
+
+-   oceanProximity:distToCenter
+
+    -   This term captures how the effect of distance to the geographic center varies by coastal category. For example, INLAND areas may become less valuable with distance from the center, while NEAR BAY areas may be valuable regardless of centrality.
+
+    -   This term allows the slope of distToCenter to change across oceanProximity groups. Instead of assuming a single, fixed effect of distance for all areas, the model can learn group-specific sensitivities to distance.
+
+-   oceanProximity:medianIncome
+
+    -    Income may affect house prices differently across coastal regions. High income near the ocean could indicate luxury real estate, while the same income level inland may not produce the same price signal. This term allows the effect of income on price to vary by oceanProximity.
+
+    -   The model estimates different coefficients for income in each region, capturing regional differences in how income translates into housing value.
 
 ```{r}
 # With oceanProximity
-# best so far
-#oceanProximity+oceanProximity:medianIncome+housingMedianAge:oceanProximity+log(population):oceanProximity+latitude
 new.formula = update(formula.best, . ~ . + oceanProximity + oceanProximity:distToCenter +oceanProximity:medianIncome)
 model.best = lm(new.formula, data = data)
 
 summary(model.best)
-#vif(model.best,type = "predictor")
 
+plot(model.best)
 
-#with oceanProximity is better
-
-#plot(model.best)
-
-names(coef(model.best))
-# Remove outliers
-#data_unlev <- data[c(7419),] # these are all island -
-
-#data[data$oceanProximity == "ISLAND",]
+# High leverage points relate to ISLAND
+data[data$oceanProximity == "ISLAND",]
 ```
 
+From the output it is clear that the model has improved since the reintroduction of oceanProximity and its respective interaction terms. The Adjusted R-squared has increased from 0.6995 to 0.7021.
 
+From the Residuals vs Fitted plot it is clear that the fit has improved significantly since the original model and the Scale Location plot displays less heteroscedasticity than the previous model. However one cause for concern is the significant leverage (for one row leverage is 1). However from further investigation it is clear that the the highly leveraged points relate to the four row where oceanProximity is ISLAND. If they are removed ISLAND can't be used a predictor and hence neither than oceanProximity. This high leverage for a minority of houses is where oceanProximity is ISLAND is a trade-off of the final model.
 
 ### 2.5 Most significant predictors
 
@@ -602,14 +637,14 @@ reg.full.summary <- summary(regfit.full)
 which(reg.full.summary$which[3, ])  # '3' refers to 3-variable model
 
 summary(model.best)
+#vif(model.best,type = "predictor")
 ```
 
 Come back to this after model is loaded this was the answer btw: medianIncome oceanProximityINLAND housingMedianAge:cityProximityScore
 
 OMAR WILL EXPLAIN
 
-Please use reg.full.summary for three most important
-Use p-values for the other important variables - remember to check covariance...
+Please use reg.full.summary for three most important Use p-values for the other important variables - remember to check covariance...
 
 # 3 Assessing the model performance
 
@@ -737,7 +772,7 @@ OMAR WILL EXPLAIN
 
 # 4 A Prediction Competition
 
-## 4.1 Test MSE for the 3 main models
+## 4.1 Test MSE for the final (best) model
 
 ```{r}
 
@@ -777,29 +812,9 @@ test_data$incomeFlag <- ifelse(test_data$medianIncome == 15.0001, 1, 0)
 actual <- test_data$medianHouseValue
 
 
-pred <- pmax(pmin(pred,500001),14999)
-#OG
-pred <- predict(initial_fit, newdata = test_data  )
-pred <- pmax(pmin(pred,500001),14999)
-og_mse <- mean((pred - actual)^2)
-og_mse
-
-
-#Best model
+# Best model
 pred <- predict(model.best, newdata = test_data  )
 pred <- pmax(pmin(pred,500001),14999)
 best_mse <- mean((pred - actual)^2)
-best_mse
-
-
-
-
-
+best_mse # Chosen test MSE for competition
 ```
-
-best so far
-
-[1] 4548677455
-
-[1] 3763439107
-
