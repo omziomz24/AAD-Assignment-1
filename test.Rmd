@@ -24,6 +24,7 @@ library(ggplot2)
 library(car)
 library(corrplot) # for correlation plot 
 library(leaps) # for Best Subset Selection 
+library(boot)
 ```
 
 ------------------------------------------------------------------------
@@ -211,6 +212,41 @@ boxplot(medianHouseValue ~ oceanProximity, data = data,
 
 From the plot, island housing appears to be most valuable on average, whereas inland housing appears to be least valuable. The median value for other 3 classes (\<1h ocean, near bay and near ocean) seems to be close to each other.
 
+### 1.2.6 Non-linear considerations
+SUE
+
+individual pair of relationships are all statistically significant:
+
+But some assumptions necessary for OLS are clearly violated (e.g. heteroskedasiticty, )
+
+Some relationships are clearly non-linear so have to consider transformations
+
+this is an example of an approach to take for pop
+
+```{r}
+## MOST IMPORTANT BITS
+
+#population, issues with leverage, heterscedascity
+lm.pop <- lm(medianHouseValue~population,data = data) 
+plot(lm.pop)
+
+#population, issues with leverage, heterscedascity
+lm.log.pop <- lm(medianHouseValue~log(population),data = data) 
+plot(lm.log.pop)
+
+
+```
+
+Please do this for:
+    I(medianIncome^2)
+    I(medianIncome^3) 
+    I(housingMedianAge^2)
+    I(latitude^2) 
+    I(longitude^2)
+    I(latitude^3) 
+    I(longitude^3)
+    log(population)
+
 ------------------------------------------------------------------------
 
 # 2 Multiple linear regression
@@ -232,11 +268,9 @@ Having concluded that this model (initial_fit) has overall significance, we can 
 
 Moreover, the R-squared and adjusted R-squared both equal to 0.617 when corrected to 3 decimal places. This means that 61.7% of the variation in the predictors are useful in explaining the variation in the response variable (medianHouseValue).
 
-Additionally, this initial model also reveals some clear relationships among the varaibles: 
-Median income has a large, positive coefficient so its a strong positive predictor as we anticipated from the preliminary analysis.
+Additionally, this initial model also reveals some clear relationships among the varaibles: Median income has a large, positive coefficient so its a strong positive predictor as we anticipated from the preliminary analysis.
 
-longitude and latitude both have large negative coefficients which reiterates our findings before regarding geographic (major cities) relevance. 
-## 2.3 Checking issues in the initial model
+longitude and latitude both have large negative coefficients which reiterates our findings before regarding geographic (major cities) relevance. \## 2.3 Checking issues in the initial model
 
 ```{r}
 par(mfrow = c(2,2))
@@ -397,49 +431,34 @@ corrplot(cor(numeric.data), method = "circle")
 
 Interaction choices for the model Note: Some relate to covariance matrix others do not
 
-### SHOULD I INCLUDE ALL OF THESE?
+-   longitude:latitude The variables longitude and latitude are not strongly correlated with medianHouseValue on their own but show strong negative correlation with each other, but together they define a unique spatial location. Their interaction enables the model to capture regional effects that are not purely east-west or north-south, but a combination of both. The other reason why to include an interaction term is to reduce multi-collinearity between these two variables. This interaction represents the geographic positioning of each home, allowing the model to pick up spatial clusters in property value.
 
-longitude:latitude The variables longitude and latitude are not strongly correlated with medianHouseValue on their own but show strong negative correlation with each other, but together they define a unique spatial location. Their interaction enables the model to capture regional effects that are not purely east-west or north-south, but a combination of both. The other reason why to include an interaction term is to reduce multi-collinearity between these two variables. This interaction represents the geographic positioning of each home, allowing the model to pick up spatial clusters in property value.
+-   bedroomsPerRoom:medianIncome bedroomsPerRoom is negatively correlated with medianIncome. Pairing them allows the model to test whether the quality or crowding of space varies in importance across income levels. This interaction captures how the value of spaciousness or room density changes depending on neighbourhood affluence.
 
-bedroomsPerRoom:medianIncome bedroomsPerRoom is negatively correlated with medianIncome. Pairing them allows the model to test whether the quality or crowding of space varies in importance across income levels. This interaction captures how the value of spaciousness or room density changes depending on neighbourhood affluence.
+-   medianIncome:housingMedianAge medianIncome is strongly positively correlated with medianHouseValue, while housingMedianAge shows a weaker positive or near-zero correlation. The two variables are not strongly correlated with each other, making them suitable for interaction. This interaction captures whether wealth is concentrated in newer or older neighbourhoods, revealing how the relationship between income and housing value shifts with the age of the housing stock.
 
-medianIncome:housingMedianAge medianIncome is strongly positively correlated with medianHouseValue, while housingMedianAge shows a weaker positive or near-zero correlation. The two variables are not strongly correlated with each other, making them suitable for interaction. This interaction captures whether wealth is concentrated in newer or older neighbourhoods, revealing how the relationship between income and housing value shifts with the age of the housing stock.
+-   distToCenter:medianIncome This interaction was chosen because it captures how the influence of income on housing value may vary with geographic centrality. High income in a central, urban location may signal access to premium markets, whereas high income in a peripheral location might reflect different lifestyle choices (e.g. rural affluence or luxury sprawl). This term allows the model to distinguish between urban wealth and suburban or rural wealth, identifying how location context changes the effect of income on house prices.
 
-distToCenter:medianIncome This interaction was chosen because it captures how the influence of income on housing value may vary with geographic centrality. High income in a central, urban location may signal access to premium markets, whereas high income in a peripheral location might reflect different lifestyle choices (e.g. rural affluence or luxury sprawl). This term allows the model to distinguish between urban wealth and suburban or rural wealth, identifying how location context changes the effect of income on house prices.
+-   latitude:incomePerRoom latitude and incomePerRoom are not highly correlated with each other. Including the interaction helps model spatial economic patterns that are not captured by either variable alone. This interaction reflects how the value of economic density varies along the north--south axis of California.
 
-latitude:incomePerRoom latitude and incomePerRoom are not highly correlated with each other. Including the interaction helps model spatial economic patterns that are not captured by either variable alone. This interaction reflects how the value of economic density varies along the north--south axis of California.
+-   bedroomsPerRoom:distToLA bedroomsPerRoom and distToLA are weakly correlated with each other and with medianHouseValue. Their interaction enables the model to explore whether the meaning of room layout or density shifts based on urban proximity. This expresses how space efficiency is valued differently depending on distance from Los Angeles.
 
-bedroomsPerRoom:distToLA bedroomsPerRoom and distToLA are weakly correlated with each other and with medianHouseValue. Their interaction enables the model to explore whether the meaning of room layout or density shifts based on urban proximity. This expresses how space efficiency is valued differently depending on distance from Los Angeles.
+-   cityProximityScore:housingMedianAge cityProximityScore is positively correlated with medianHouseValue, and weakly so with housingMedianAge. Their interaction tests whether proximity to major cities boosts or dampens the value of older housing stock. This models whether older homes near urban centres are more desirable or more heavily discounted.
 
-cityProximityScore:housingMedianAge cityProximityScore is positively correlated with medianHouseValue, and weakly so with housingMedianAge. Their interaction tests whether proximity to major cities boosts or dampens the value of older housing stock. This models whether older homes near urban centres are more desirable or more heavily discounted.
+-   cityProximityScore:bedroomsPerRoom These variables are weakly correlated with each other and allow the model to investigate if spatial efficiency (bedroom density) is more or less valuable near high-demand areas. This reflects how crowding or layout impacts price differently in urban versus more distant areas.
 
-cityProximityScore:bedroomsPerRoom These variables are weakly correlated with each other and allow the model to investigate if spatial efficiency (bedroom density) is more or less valuable near high-demand areas. This reflects how crowding or layout impacts price differently in urban versus more distant areas.
+-   housingMedianAge:incomePerRoom These two have low correlation but both relate to housing quality and socioeconomic context. Their interaction allows for the effect of economic density to vary depending on housing stock age. This models how the combination of compact affluence and housing maturity affects property value.
 
-housingMedianAge:incomePerRoom These two have low correlation but both relate to housing quality and socioeconomic context. Their interaction allows for the effect of economic density to vary depending on housing stock age. This models how the combination of compact affluence and housing maturity affects property value.
-
-The four interaction terms between medianIncome and directional components (cosDirToLA, sinDirToLA, cosDirToSF, sinDirToSF) were included to model how the effect of income on housing value changes depending on where a home is situated relative to Los Angeles and San Francisco. Income is the strongest individual predictor of housing value, but its impact is not spatially uniform. These directional interactions allow the model to account for how the purchasing power and market influence of income varies depending on urban proximity, regional economies, and land use patterns. In essence, they help capture whether income drives prices more strongly in certain directions, reflecting localised economic geographies and how spatial context modifies the effect of wealth.
+-   The four interaction terms between medianIncome and directional components (cosDirToLA, sinDirToLA, cosDirToSF, sinDirToSF) were included to model how the effect of income on housing value changes depending on where a home is situated relative to Los Angeles and San Francisco. Income is the strongest individual predictor of housing value, but its impact is not spatially uniform. These directional interactions allow the model to account for how the purchasing power and market influence of income varies depending on urban proximity, regional economies, and land use patterns. In essence, they help capture whether income drives prices more strongly in certain directions, reflecting localised economic geographies and how spatial context modifies the effect of wealth.
 
 #### 2.4.2.2 Choosing non-linear terms
 
-individual pair of relationships are all statistically significant:
 
-But some assumptions necessary for OLS are clearly violated (e.g. heteroskedasiticty, )
+ELOISE explaining these:
+log(medianIncome / distToCenter)
+I(medianIncome / housingMedianAge)
+log(incomePerRoom)
 
-Some relationships are clearly non-linear so have to consider transformations
-
-```{r}
-## MOST IMPORTANT BITS
-
-#population, issues with leverage, heterscedascity
-lm.pop <- lm(medianHouseValue~population,data = data) 
-plot(lm.pop)
-
-#population, issues with leverage, heterscedascity
-lm.log.pop <- lm(medianHouseValue~log(population),data = data) 
-plot(lm.log.pop)
-
-# do for lat, long, housing and income
-```
 
 ### 2.4.3 Best subset selection with new predictors and interaction terms
 
@@ -546,6 +565,8 @@ vif(model.best,type = "predictor")
 
 ### 2.4.3 Adding in oceanProximity to model
 
+Eloise needs to add
+
 ```{r}
 # With oceanProximity
 # best so far
@@ -563,32 +584,12 @@ summary(model.best)
 
 names(coef(model.best))
 # Remove outliers
-#data_unlev <- data[c(7419),] # these are all island - ridge or lasso can get rid of this
+#data_unlev <- data[c(7419),] # these are all island -
 
 #data[data$oceanProximity == "ISLAND",]
 ```
 
-### 2.4.4 Ridge Regression
 
-```{r}
-
-library(glmnet)
-x = model.matrix(new.formula, data = data)[, -1]  # Remove intercept column
-y = data$medianHouseValue
-
-# Perform 10-fold cross-validation to find the best lambda
-set.seed(7)
-lambda_grid <- 10^seq(-5, -2, length = 100)  # from 1e-5 to 1e-2
-cv.ridge = cv.glmnet(x, y, alpha = 0,lambda = lambda_grid, nfolds = 10,standardize = TRUE)
-
-# Extract best lambda (lambda.min gives lambda with minimum MSE)
-best.lambda = cv.ridge$lambda.min
-
-ridge.model = glmnet(x, y, alpha = 0, lambda = best.lambda)
-coef(ridge.model)
-
-
-```
 
 ### 2.5 Most significant predictors
 
@@ -605,7 +606,134 @@ summary(model.best)
 
 Come back to this after model is loaded this was the answer btw: medianIncome oceanProximityINLAND housingMedianAge:cityProximityScore
 
+OMAR WILL EXPLAIN
+
+Please use reg.full.summary for three most important
+Use p-values for the other important variables - remember to check covariance...
+
 # 3 Assessing the model performance
+
+## 3.1 Training MSE
+
+```{r}
+# Compute training MSE
+# Initial model
+# Need to reload data since new predictor columns have been added
+initial_data <- read.csv("Assignt1_data.csv") 
+initial_data <- na.omit(initial_data) 
+initial_fit <- lm(medianHouseValue ~ . - id, data = initial_data) 
+initial_predictions <- predict(initial_fit, newdata = initial_data)
+initial_train_mse <- mean((data$medianHouseValue - initial_predictions)^2)
+initial_train_mse
+
+
+
+# Final Model
+final_predictions <- predict(model.best, newdata=data)
+final_train_mse <- mean((data$medianHouseValue - final_predictions)^2)
+final_train_mse
+```
+
+## 3.2 Validation set MSE 80-20 split
+
+```{r}
+
+# Set seed required for this approach to get the 80-20 split
+set.seed(123)
+
+# Split data - 80% for training and 20% for validation
+n <- nrow(data)
+train_indicies <- sample(1:n, size=floor(0.8 * n))
+train_set <- data[train_indicies, ]
+validation_set <- data[-train_indicies, ]
+
+train_set_init <- initial_data[train_indicies, ]
+validation_set_init <- initial_data[-train_indicies, ]
+
+# Initial model
+initial_fit_train <- lm(medianHouseValue ~ . - id, data=train_set_init)
+initial_val_predictions <- predict(initial_fit_train, newdata=validation_set_init)
+initial_val_mse <- mean((validation_set$medianHouseValue - initial_val_predictions)^2)
+initial_val_mse
+
+# Final model
+final_fit_train <- lm(formula.best, data=train_set)
+final_val_predictions <- predict(final_fit_train, newdata=validation_set)
+final_val_mse <- mean((validation_set$medianHouseValue - final_val_predictions)^2)
+final_val_mse
+
+```
+
+## 3.3 5 fold CV MSE
+
+```{r}
+set.seed(123)
+
+# Define number of folds
+k <- 5
+n <- nrow(data)
+folds <- sample(1:k, n, replace=TRUE)
+
+# Initial model
+# Vector to hold MSE for each fold
+initial_cv_errors <- numeric(k)
+final_cv_errors <- numeric(k)
+
+
+for (i in 1:k) {
+  
+  train_indicies <- which(folds != i)
+  test_indicies <- which(folds == i)
+  
+  train_data <- data[train_indicies, ]
+  test_data <- data[test_indicies, ]
+  
+  train_set_init <- initial_data[train_indicies, ]
+  validation_set_init <- initial_data[-train_indicies, ]
+  
+  # Initial Model
+  initial_cv_model <- lm(medianHouseValue ~ . - id, data=train_data_init)
+  initial_predictions <- predict(initial_cv_model, newdata=test_data_init)
+  initial_cv_errors[i] <- mean((test_data_init$medianHouseValue - initial_predictions)^2)
+  
+  # Final Model
+  final_cv_model <- lm(formula.best, data=train_data)
+  final_predictions <- predict(final_cv_model, newdata=test_data)
+  final_cv_errors[i] <- mean((test_data$medianHouseValue - final_predictions)^2)
+  
+}
+
+initial_cv_5fold_mse <- mean(initial_cv_errors)
+initial_cv_5fold_mse
+final_cv_5fold_mse <- mean(final_cv_errors)
+final_cv_5fold_mse
+
+```
+
+## 3.4 LOOCV MSE
+
+```{r}
+
+set.seed(123)
+
+# Initial Model
+initial_fit <- lm(medianHouseValue ~ . - id, data=initial_data)
+initial_loocv <- cv.glm(initial_data, initial_fit)
+initial_loocv_mse <- initial_loocv$delta[1]
+initial_loocv_mse
+
+# Final Model
+final_fit <- lm(formula.best, data=data)
+final_loocv <- cv.glm(data, final_fit)
+final_loocv_mse <- final_loocv$delta[1]
+final_loocv_mse
+
+
+```
+
+## 3.5 Comparison
+
+OMAR WILL EXPLAIN
 
 # 4 A Prediction Competition
 
@@ -664,12 +792,7 @@ best_mse <- mean((pred - actual)^2)
 best_mse
 
 
-#ridge
-test_matrix <- model.matrix(new.formula, data = test_data)[, -1]
-pred <- predict(ridge.model, s = best.lambda, newx = test_matrix)
-pred <- pmax(pmin(pred,500001),14999)
-ridge_mse <- mean((pred - actual)^2)
-ridge_mse
+
 
 
 ```
@@ -680,6 +803,3 @@ best so far
 
 [1] 3763439107
 
-[1] 3856612972
-
-## 4.2 Chosen model and test MSE
