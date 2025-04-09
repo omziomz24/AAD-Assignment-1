@@ -224,13 +224,11 @@ For longitude and latitude, it is apparent that a polynomial model with degree 2
 ```{r}
 lm.latitude = lm(medianHouseValue ~ latitude, data = data)
 lm.latitude.poly2 = lm(medianHouseValue ~ I(latitude^2), data = data)
-par(mfrow = c(2,2))
-plot(lm.latitude)
-plot(lm.latitude.poly2) 
-
 lm.latitude.poly3 = lm(medianHouseValue ~ I(latitude^3), data = data) 
-plot(lm.latitude.poly3) 
-
+par(mfrow = c(2,2))
+plot(lm.latitude, cex = 0.1)
+plot(lm.latitude.poly2, cex = 0.1) 
+plot(lm.latitude.poly3, cex = 0.1) 
 # logitude and latitude up to degree 3 
 ```
 
@@ -239,16 +237,31 @@ plot(lm.latitude.poly3)
 
 ```
 
-
+We have also explored polynomial regression on medianIncome: 
 ```{r}
+lm.medianIncome <- lm(medianHouseValue ~ medianIncome, data = data)
+summary(lm.medianIncome)
+par(mfrow = c(2,2)); plot(lm.medianIncome, cex = 0.1)
 
-Please do this for: 
-I(medianIncome\^2) 
-I(medianIncome\^3) 
-I(housingMedianAge\^2) 
+lm.medianIncome.poly2 <- lm(medianHouseValue ~ I(medianIncome^2), data = data)
+summary(lm.medianIncome.poly2)
+par(mfrow = c(2,2)); plot(lm.medianIncome.poly2, cex = 0.1)
 
+lm.medianIncome.poly3 <- lm(medianHouseValue ~ I(medianIncome^3), data = data)
+summary(lm.medianIncome.poly3)
+par(mfrow = c(2,2)); plot(lm.medianIncome.poly3, cex = 0.1)
 ```
 
+When we tried quadratic model for housingMedianAge, it does not seem to improve the model any further. The residual 
+```{r}
+lm.housingMedianAge <- lm(medianHouseValue ~ housingMedianAge, data = data)
+summary(lm.housingMedianAge)
+par(mfrow = c(2,2)); plot(lm.housingMedianAge, cex = 0.1)
+
+lm.housingMedianAge.poly2 <- lm(medianHouseValue ~ I(housingMedianAge^2), data = data)
+summary(lm.housingMedianAge.poly2)
+par(mfrow = c(2,2)); plot(lm.housingMedianAge.poly2, cex = 0.1)
+```
 
 Further, the predictor "population" suffers from high leverage point and heteroskedasticity. To address this issue, a log transform is applied to the original data. From the pre-log-transform residual plot, the residuals are skewed/clustered at one end, whereas the post-log plot show better symmetry. This indicates that a log transform improves linearity between the response and the regressor, which motivates us to implement this improvement in the multiple regression later on. 
 ```{r}

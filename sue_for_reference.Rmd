@@ -272,20 +272,31 @@ lm.fit <- lm(medianHouseValue~oceanProximity,data = data)
 summary(lm.fit)
 plot(lm.fit)
 
+
+```{r}
 # Keep medianIncome the same
 #playing around a bit
 #medianIncome non-linear and heterscedascity, some influential points too
 #better
+
+lm.fit <- lm(medianHouseValue~medianIncome,data = data)
+summary(lm.fit)
+par(mforw = c(2,2)); plot(lm.fit)
+
 lm.fit <- lm(medianHouseValue~log(medianIncome),data = data) 
 summary(lm.fit)
-plot(lm.fit)
+par(mforw = c(2,2)); plot(lm.fit)
 
 #poly 2 looks pretty good, better than log
 lm.fit <- lm(medianHouseValue~poly(medianIncome,2),data = data) 
 summary(lm.fit)
-plot(lm.fit)
+par(mforw = c(2,2)); plot(lm.fit)
 ```
 
+
+```{r}
+
+```
 
 
 
