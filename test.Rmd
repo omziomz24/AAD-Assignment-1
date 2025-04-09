@@ -215,67 +215,83 @@ boxplot(medianHouseValue ~ oceanProximity, data = data,
 From the plot, island housing appears to be most valuable on average, whereas inland housing appears to be least valuable. The median value for other 3 classes (\<1h ocean, near bay and near ocean) seems to be close to each other.
 
 
-
 ### 1.2.6 Non-linear considerations
 
-By performing single linear regressions, we find that individual pair of relationships are all statistically significant. However, some assumptions necessary for OLS are clearly violated (e.g. heteroskedasiticty), and some relationship are clearly non-linear. We therefore consider polynomial and log transformations. 
+By performing single linear regressions, we find that individual pair of relationships are all statistically significant. However, some assumptions necessary for OLS are clearly violated (e.g. heteroskedasiticty), and some relationship are clearly non-linear. We therefore consider polynomial and log transformations for the following pairwise relationships:  
 
-For longitude and latitude, it is apparent that a polynomial model with degree 2 and 3 is much better than the linear model. 
+For longitude and latitude, it is apparent that a polynomial model with degree 2 and 3 is better than the linear model. 
 ```{r}
 lm.latitude = lm(medianHouseValue ~ latitude, data = data)
-lm.latitude.poly2 = lm(medianHouseValue ~ I(latitude^2), data = data)
-lm.latitude.poly3 = lm(medianHouseValue ~ I(latitude^3), data = data) 
+lm.latitude.poly2 = lm(medianHouseValue ~ poly(latitude, 2, raw = T), data = data)
+lm.latitude.poly3 = lm(medianHouseValue ~ poly(latitude, 3, raw = T), data = data) 
+lm.longitude = lm(medianHouseValue ~ longitude, data = data)
+lm.longitude.poly2 = lm(medianHouseValue ~ poly(longitude, 2, raw = T), data = data)
+lm.longitude.poly3 = lm(medianHouseValue ~ poly(longitude, 3, raw = T), data = data) 
 par(mfrow = c(2,2))
 plot(lm.latitude, cex = 0.1)
 plot(lm.latitude.poly2, cex = 0.1) 
 plot(lm.latitude.poly3, cex = 0.1) 
 # logitude and latitude up to degree 3 
+
+
+
+  #  I(latitude^2) + 
+   # I(longitude^2) +
+   # I(latitude^3) + 
+   # I(longitude^3) +
+    
 ```
 
-
+#### Housing Median Age: want to justify why degree 2 polynomial is better 
 ```{r}
 
+lm.housingMedianAge <- lm(medianHouseValue ~ housingMedianAge, data = data)
+lm.housingMedianAge.poly2 <- lm(medianHouseValue 
+                                ~ poly(housingMedianAge, 2, raw = T), 
+                                data = data)
+lm.housingMedianAge.poly3 <- lm(medianHouseValue 
+                                ~ poly(housingMedianAge, 3, raw = T), 
+                                data = data)
+par(mfrow = c(2,2)); plot(lm.housingMedianAge, cex = 0.1)
+par(mfrow = c(2,2)); plot(lm.housingMedianAge.poly2, cex = 0.1)
+anova(lm.housingMedianAge, lm.housingMedianAge.poly2, lm.housingMedianAge.poly3 ) 
 ```
 
-We have also explored polynomial regression on medianIncome: 
+Polynomial regression of medianHouseValue on medianIncome up to degree 3 is also shown to have a better fit than lower degree polynomial as well as linear model. In particular, with the evidence from the anova F-test, we conclude that degree-3 is significantly better than degree-2, whereas moving to higher degree (i.e. quartic) does not bring additional significant benefit. 
 ```{r}
 lm.medianIncome <- lm(medianHouseValue ~ medianIncome, data = data)
-summary(lm.medianIncome)
-par(mfrow = c(2,2)); plot(lm.medianIncome, cex = 0.1)
+# summary(lm.medianIncome)
+# par(mfrow = c(2,2)); plot(lm.medianIncome, cex = 0.2)
 
-lm.medianIncome.poly2 <- lm(medianHouseValue ~ I(medianIncome^2), data = data)
-summary(lm.medianIncome.poly2)
-par(mfrow = c(2,2)); plot(lm.medianIncome.poly2, cex = 0.1)
+lm.medianIncome.poly2 <- lm(medianHouseValue ~ poly(medianIncome, 2, raw = T), 
+                            data = data)
+# summary(lm.medianIncome.poly2)
+# par(mfrow = c(2,2)); plot(lm.medianIncome.poly2, cex = 0.2)
 
-lm.medianIncome.poly3 <- lm(medianHouseValue ~ I(medianIncome^3), data = data)
-summary(lm.medianIncome.poly3)
-par(mfrow = c(2,2)); plot(lm.medianIncome.poly3, cex = 0.1)
+lm.medianIncome.poly3 <- lm(medianHouseValue ~ poly(medianIncome, 3, raw = T),
+                            data = data)
+# summary(lm.medianIncome.poly3)
+# par(mfrow = c(2,2)); plot(lm.medianIncome.poly3, cex = 0.2)
+
+lm.medianIncome.poly4 <- lm(medianHouseValue ~ poly(medianIncome, 4, raw = T),
+                            data = data)
+
+anova(lm.medianIncome, 
+      lm.medianIncome.poly2, 
+      lm.medianIncome.poly3, 
+      lm.medianIncome.poly4) 
 ```
 
-When we tried quadratic model for housingMedianAge, it does not seem to improve the model any further. The residual 
-```{r}
-lm.housingMedianAge <- lm(medianHouseValue ~ housingMedianAge, data = data)
-summary(lm.housingMedianAge)
-par(mfrow = c(2,2)); plot(lm.housingMedianAge, cex = 0.1)
-
-lm.housingMedianAge.poly2 <- lm(medianHouseValue ~ I(housingMedianAge^2), data = data)
-summary(lm.housingMedianAge.poly2)
-par(mfrow = c(2,2)); plot(lm.housingMedianAge.poly2, cex = 0.1)
-```
-
-Further, the predictor "population" suffers from high leverage point and heteroskedasticity. To address this issue, a log transform is applied to the original data. From the pre-log-transform residual plot, the residuals are skewed/clustered at one end, whereas the post-log plot show better symmetry. This indicates that a log transform improves linearity between the response and the regressor, which motivates us to implement this improvement in the multiple regression later on. 
+Further, the predictor "population" suffers from high leverage point and heteroskedasticity. To address this issue, a log transform is applied to the original data. From the pre-log-transform residual plot, the residuals are skewed/clustered at one end, whereas the post-log plot show better random scattering. This indicates that a log transform improves linearity between the response and the predictor, which motivates us to implement this improvement in our final model. 
 ```{r}
 lm.pop <- lm(medianHouseValue ~ population, data = data) 
 summary(lm.pop)
-plot(lm.pop)
+par(mfrow = c(2,2)); plot(lm.pop)
 
 lm.log.pop <- lm(medianHouseValue ~ log(population), data = data) 
 summary(lm.log.pop)
-plot(lm.log.pop)
+par(mfrow = c(2,2)); plot(lm.log.pop)
 ```
-
-
-
 
 
 ------------------------------------------------------------------------------------------------------------
