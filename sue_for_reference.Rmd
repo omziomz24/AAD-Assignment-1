@@ -213,6 +213,105 @@ ggplot(clean_data, aes(x = clean_data$longitude, y = clean_data$latitude)) +
 
 
 
+###1.2.6 
+
+
+
+
+individual pair of relationships are all statistically significant:
+
+But some assumptions necessary for OLS are clearly violated (e.g. heteroskedasiticty, )
+
+Some relationships are clearly non-linear so have to consider transformations 
+
+```{r }
+#Do each linear regression separately and view plots
+#longitude, clearly non-linear poly?
+lm.fit <- lm(medianHouseValue~longitude,data = data) 
+summary(lm.fit)
+plot(lm.fit)
+
+# latitude, again non-linear poly?
+lm.fit <- lm(medianHouseValue~latitude,data = data) 
+summary(lm.fit)
+plot(lm.fit)
+```
+
+```{r }
+
+```
+
+#housing median age - good fit for first graph
+lm.fit <- lm(medianHouseValue~housingMedianAge,data = data) 
+summary(lm.fit)
+plot(lm.fit)
+
+#aveRooms, definitely non-linear, big issue with high leverage points
+lm.fit <- lm(medianHouseValue~aveRooms,data = data) 
+summary(lm.fit)
+plot(lm.fit)
+
+
+#aveBedrooms, issue with high leverage points
+lm.fit <- lm(medianHouseValue~aveBedrooms,data = data) 
+summary(lm.fit)
+plot(lm.fit)
+
+#population, issues with leverage, heterscedascity
+lm.fit <- lm(medianHouseValue~population,data = data) 
+summary(lm.fit)
+plot(lm.fit)
+
+#medianIncome non-linear and heterscedascity, some influential points too
+lm.fit <- lm(medianHouseValue~medianIncome,data = data) 
+summary(lm.fit)
+plot(lm.fit)
+
+#oceanProximity catergorical and need to play around with this a bit
+lm.fit <- lm(medianHouseValue~oceanProximity,data = data) 
+summary(lm.fit)
+plot(lm.fit)
+
+# Keep medianIncome the same
+#playing around a bit
+#medianIncome non-linear and heterscedascity, some influential points too
+#better
+lm.fit <- lm(medianHouseValue~log(medianIncome),data = data) 
+summary(lm.fit)
+plot(lm.fit)
+
+#poly 2 looks pretty good, better than log
+lm.fit <- lm(medianHouseValue~poly(medianIncome,2),data = data) 
+summary(lm.fit)
+plot(lm.fit)
+```
+
+
+
+
+
+```{r}
+## MOST IMPORTANT BITS
+
+#looks way better
+#population, issues with leverage, heterscedascity
+lm.fit <- lm(medianHouseValue~log(population),data = data) 
+summary(lm.fit)
+plot(lm.fit)
+
+
+lm.fit <- lm(medianHouseValue~bedroomsPerRoom,data = data) 
+summary(lm.fit)
+plot(lm.fit)
+
+lm.fit <- lm(medianHouseValue~aveBedroomsPerRoom,data = data) 
+summary(lm.fit)
+plot(lm.fit)
+```
+
+
+
+
 
 
 

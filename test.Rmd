@@ -214,93 +214,53 @@ boxplot(medianHouseValue ~ oceanProximity, data = data,
 
 From the plot, island housing appears to be most valuable on average, whereas inland housing appears to be least valuable. The median value for other 3 classes (\<1h ocean, near bay and near ocean) seems to be close to each other.
 
-### 1.2.6 More exploring: key results from single linear regression (Feel like this can be put into 2.3 as well?)
-
-individual pair of relationships are all statistically significant:
-
-But some assumptions necessary for OLS are clearly violated (e.g. heteroskedasiticty, )
-
-Some relationships are clearly non-linear so have to consider transformations 
-
-```{r }
-# comment: I don't think we should report all of them below, just the important ones should suffice 
-# comment: I will keep the entire, original chunk here for now: 
-
-#Do each linear regression separately and view plots
-#longitude, clearly non-linear poly?
-lm.fit <- lm(medianHouseValue~longitude,data = data) 
-summary(lm.fit)
-plot(lm.fit)
-
-# latitude, again non-linear poly?
-lm.fit <- lm(medianHouseValue~latitude,data = data) 
-summary(lm.fit)
-plot(lm.fit)
-
-#housing median age - good fit for first graph
-lm.fit <- lm(medianHouseValue~housingMedianAge,data = data) 
-summary(lm.fit)
-plot(lm.fit)
-
-#aveRooms, definitely non-linear, big issue with high leverage points
-lm.fit <- lm(medianHouseValue~aveRooms,data = data) 
-summary(lm.fit)
-plot(lm.fit)
 
 
-#aveBedrooms, issue with high leverage points
-lm.fit <- lm(medianHouseValue~aveBedrooms,data = data) 
-summary(lm.fit)
-plot(lm.fit)
+### 1.2.6 Non-linear considerations
 
-#population, issues with leverage, heterscedascity
-lm.fit <- lm(medianHouseValue~population,data = data) 
-summary(lm.fit)
-plot(lm.fit)
+By performing single linear regressions, we find that individual pair of relationships are all statistically significant. However, some assumptions necessary for OLS are clearly violated (e.g. heteroskedasiticty), and some relationship are clearly non-linear. We therefore consider polynomial and log transformations. 
 
-#medianIncome non-linear and heterscedascity, some influential points too
-lm.fit <- lm(medianHouseValue~medianIncome,data = data) 
-summary(lm.fit)
-plot(lm.fit)
+For longitude and latitude, it is apparent that a polynomial model with degree 2 and 3 is much better than the linear model. 
+```{r}
+lm.latitude = lm(medianHouseValue ~ latitude, data = data)
+lm.latitude.poly2 = lm(medianHouseValue ~ I(latitude^2), data = data)
+par(mfrow = c(2,2))
+plot(lm.latitude)
+plot(lm.latitude.poly2) 
 
-#oceanProximity catergorical and need to play around with this a bit
-lm.fit <- lm(medianHouseValue~oceanProximity,data = data) 
-summary(lm.fit)
-plot(lm.fit)
+lm.latitude.poly3 = lm(medianHouseValue ~ I(latitude^3), data = data) 
+plot(lm.latitude.poly3) 
 
-# Keep medianIncome the same
-#playing around a bit
-#medianIncome non-linear and heterscedascity, some influential points too
-#better
-lm.fit <- lm(medianHouseValue~log(medianIncome),data = data) 
-summary(lm.fit)
-plot(lm.fit)
-
-#poly 2 looks pretty good, better than log
-lm.fit <- lm(medianHouseValue~poly(medianIncome,2),data = data) 
-summary(lm.fit)
-plot(lm.fit)
+# logitude and latitude up to degree 3 
 ```
 
 
 ```{r}
-## MOST IMPORTANT BITS
 
-#looks way better
-#population, issues with leverage, heterscedascity
-lm.fit <- lm(medianHouseValue~log(population),data = data) 
-summary(lm.fit)
-plot(lm.fit)
-
-
-lm.fit <- lm(medianHouseValue~bedroomsPerRoom,data = data) 
-summary(lm.fit)
-plot(lm.fit)
-
-lm.fit <- lm(medianHouseValue~aveBedroomsPerRoom,data = data) 
-summary(lm.fit)
-plot(lm.fit)
 ```
+
+
+```{r}
+
+Please do this for: 
+I(medianIncome\^2) 
+I(medianIncome\^3) 
+I(housingMedianAge\^2) 
+
+```
+
+
+Further, the predictor "population" suffers from high leverage point and heteroskedasticity. To address this issue, a log transform is applied to the original data. From the pre-log-transform residual plot, the residuals are skewed/clustered at one end, whereas the post-log plot show better symmetry. This indicates that a log transform improves linearity between the response and the regressor, which motivates us to implement this improvement in the multiple regression later on. 
+```{r}
+lm.pop <- lm(medianHouseValue ~ population, data = data) 
+summary(lm.pop)
+plot(lm.pop)
+
+lm.log.pop <- lm(medianHouseValue ~ log(population), data = data) 
+summary(lm.log.pop)
+plot(lm.log.pop)
+```
+
 
 
 
