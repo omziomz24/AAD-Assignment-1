@@ -563,7 +563,7 @@ cv.errors=matrix(NA,k,nvmax, dimnames=list(NULL, paste(1:nvmax))) # NA means no 
 
 
 for(j in 1:k){
-  best.fit=regsubsets(formula = as.formula(formula_string),data = data[folds!=j,],nvmax=nvmax)
+  best.fit=regsubsets(x = as.formula(formula_string),data = data[folds!=j,],nvmax=nvmax)
   for(i in 1:nvmax){
     pred=predict(best.fit,data[folds==j,],id=i)
     cv.errors[j,i]=mean( (data$medianHouseValue[folds==j]-pred)^2)
@@ -576,7 +576,7 @@ best.model.size <- as.numeric(names(which.min(mean.cv.errors)))
 plot(mean.cv.errors,type='b')
 points(best.model.size, mean.cv.errors[best.model.size], col = "red", pch = 19, cex = 1.5)
 # Obtain the best subset model using the full data and CV selected id
-reg.best=regsubsets(formula = as.formula(formula_string),data = data, nvmax=nvmax)
+reg.best=regsubsets(x = as.formula(formula_string),data = data, nvmax=nvmax)
 coef(reg.best,best.model.size)
 
 
@@ -605,7 +605,7 @@ In additional to oceanProximity these two interaction terms have been added:
 
 -   oceanProximity:medianIncome
 
-    -    Income may affect house prices differently across coastal regions. High income near the ocean could indicate luxury real estate, while the same income level inland may not produce the same price signal. This term allows the effect of income on price to vary by oceanProximity.
+    -   Income may affect house prices differently across coastal regions. High income near the ocean could indicate luxury real estate, while the same income level inland may not produce the same price signal. This term allows the effect of income on price to vary by oceanProximity.
 
     -   The model estimates different coefficients for income in each region, capturing regional differences in how income translates into housing value.
 
@@ -754,6 +754,8 @@ set.seed(123)
 # Initial Model
 initial_fit <- lm(medianHouseValue ~ . - id, data=initial_data)
 initial_loocv <- cv.glm(initial_data, initial_fit)
+
+summary(initial_loocv)
 initial_loocv_mse <- initial_loocv$delta[1]
 initial_loocv_mse
 
@@ -762,6 +764,10 @@ final_fit <- lm(formula.best, data=data)
 final_loocv <- cv.glm(data, final_fit)
 final_loocv_mse <- final_loocv$delta[1]
 final_loocv_mse
+
+
+
+str(initial_data)
 
 
 ```
