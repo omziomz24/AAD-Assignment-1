@@ -25,6 +25,7 @@ library(car)
 library(corrplot) # for correlation plot 
 library(leaps) # for Best Subset Selection 
 library(boot)
+library(stargazer) # for data presentation in 1.1 
 ```
 
 ------------------------------------------------------------------------
@@ -38,7 +39,12 @@ There are 18640 data points in the original data set. There are 10 features bein
 ```{r}
 data <- read.csv("Assignt1_data.csv") 
 dim(data) 
-str(data) 
+
+stargazer(data[-1], summary = TRUE, type = "text")
+# str(data) 
+# summary(data) --> don't think we should present this one 
+# head(data)
+
 # data$oceanProximity <- as.factor(data$oceanProximity)
 ```
 
@@ -72,10 +78,11 @@ percentage <- mean(data$medianHouseValue == value) * 100
 cat("Percentage of data with medianHouseValue =", value, "is", percentage, "%\n")
 summary(data$medianHouseValue)
 ```
+Ultimately, given the max. value is 500,001 and the fact that the frequency of this exact value is disproportionately high (4.7%), we are led to conclude that 500,001 is the censoring cap applied. This is likely due to the data collection methods used, where houses valued above \$500,000 were simply reported as exactly $500,001. The impact of this is that the data may under-represent the true values and variation in higher-value homes. Moving forward, we have decided to keep these censored observations in but will maintain caution - especially in our interpretation of correlations, and coming to terms with the fact that our model will not be able to provide reliable predictions for values above 500,001.
 
-Other censoring
-
+### 1.2.2 Correlations among variables
 ```{r}
+
 summary(data$medianIncome)
 value <- max(data$medianIncome)  
 percentage <- mean(data$medianIncome == value) * 100
@@ -88,6 +95,7 @@ It's clear that medianIncome is also censored. Both medianIncome and medianHouse
 ### 1.2.2 Correlations among variables
 
 ```{r}
+
 numeric.data <-  data[sapply(data, is.numeric)]
 head(numeric.data)
 cor_medianHouseValue <- cor(data$medianHouseValue, 
@@ -114,6 +122,10 @@ Note that ID is just for labeling purposes and it is not a relevant predictor, s
 
 Housing values can vary based on their proximity to major cities. By analyzing the provided longitude and latitude, we can deduce that the dataset originates from California. To visualise the relative variation in median house values, we create a heatmap that highlights the influence of major cities, specifically Los Angeles (LA) and San Francisco (SF).
 
+
+### 1.2.3 Geospacial plot of medianHouseValue
+
+Housing values can vary based on their proximity to major cities. By analyzing the provided longitude and latitude, we can deduce that the dataset originates from California. To visualize the relative variation in median house values, we create a heatmap that highlights the influence of major cities, specifically Los Angeles (LA) and San Francisco (SF).
 ```{r}
 cities <- data.frame(
   city = c("LA", "SF"), 
@@ -212,11 +224,29 @@ boxplot(medianHouseValue ~ oceanProximity, data = data,
 
 From the plot, island housing appears to be most valuable on average, whereas inland housing appears to be least valuable. The median value for other 3 classes (\<1h ocean, near bay and near ocean) seems to be close to each other.
 
+### 1.2.6 More exploring: key results from single linear regression (Feel like this can be put into 2.3 as well?)
+
+individual pair of relationships are all statistically significant:
+
+But some assumptions necessary for OLS are clearly violated (e.g. heteroskedasiticty, )
+
+
 ### 1.2.6 Non-linear considerations
 
 SUE
 
 individual pair of relationships are all statistically significant:
+
+```{r }
+# comment: I don't think we should report all of them below, just the important ones should suffice 
+# comment: I will keep the entire, original chunk here for now: 
+
+#Do each linear regression separately and view plots
+#longitude, clearly non-linear poly?
+lm.fit <- lm(medianHouseValue~longitude,data = data) 
+summary(lm.fit)
+plot(lm.fit)
+
 
 But some assumptions necessary for OLS are clearly violated (e.g. heteroskedasiticty, )
 
@@ -238,6 +268,7 @@ plot(lm.log.pop)
 
 ```
 
+
 Please do this for: I(medianIncome\^2) I(medianIncome\^3) I(housingMedianAge\^2) I(latitude\^2) I(longitude\^2) I(latitude\^3) I(longitude\^3) log(population)
 
 ------------------------------------------------------------------------
@@ -255,6 +286,12 @@ initial_data <- na.omit(initial_data)
 
 initial_fit <- lm(medianHouseValue ~ . - id, data = initial_data) 
 summary(initial_fit)
+
+#poly 2 looks pretty good, better than log
+lm.fit <- lm(medianHouseValue~poly(medianIncome,2),data = data) 
+summary(lm.fit)
+plot(lm.fit)
+
 ```
 
 ## 2.2 Discussion of the initial model
@@ -280,6 +317,37 @@ The residual plot shows that the points are not quite randomly scattered around 
 
 The funnel shape (the spread of residuals seems to increase as the fitted values increase) within the fitted value range (0, 400000) strengthens my doubt of heteroscedasticity. We may consider transforming some of our predictors later.
 
+
+lm.fit <- lm(medianHouseValue~bedroomsPerRoom,data = data) 
+summary(lm.fit)
+plot(lm.fit)
+
+lm.fit <- lm(medianHouseValue~aveBedroomsPerRoom,data = data) 
+summary(lm.fit)
+plot(lm.fit)
+```
+
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+
+# 2 Multiple linear regression 
+
+## 2.1 Initial MLR model using all appropriate predictors
+
+We will be using the all the given predictors except for id, since it is irrelevant.
+```{r}
+initial_fit <- lm(data$medianHouseValue ~. - id, data = data) 
+summary(initial_fit)
+```
+
+## 2.2 Discussion of the initial model
+
+The p-value of the F-test is practically zero, therefore we have sufficient evidence to reject the null hypothesis that all regression coefficients are zero. This means that the model has overall significance, and that at least one of the predictors are useful in explaining the variation in medianHouseValue. 
+
+Having concluded that this model (initial_fit) has overall significance, we can gauge the significance of individual predictors through the t-test p-values: At 5% level of significance, we cannot say that population is useful, as we do not have sufficient evidence to reject the null hypothesis that its corresponding coefficient is non-zero. The dummy variable, "NEAR BAY", associated to the categorical predictor, "oceanProximity", is also shown to be insignificant. This might be an indication that comparing to the base case (\<1H OCEAN), NEAR BAY does not lead to significant change in Median House Price.
+
 There are some outliers in the residuals that are far away from zero. These influential points may be high-leverage or outliers or both - should be investigated later.
 
 ```{r}
@@ -292,6 +360,48 @@ plot(initial_fit, which = 1, cex = 0.2, pch = 16, cex.axis = 0.6,
 ### 2.3.2 QQ Plot for Residuals:
 
 A key assumption behind generalised linear model is that the error term is normally distributed. This is why t-statistics and F-statistics can be used in our previous testing.
+
+T-stats are robust under some mild deviation from normality, but under extreme non-normality, these statistics become less reliable.
+
+In our plot, the points deviates from the reference line (dashed line) for larger and smaller quantiles (roughly outside of this range: (-2, 1.5)), indicating non-normality (especially high skewness) and influence of outliers especially at the tails.
+
+```{r}
+Having concluded that this model (initial_fit) has overall significance, we can gauge the significance of individual predictors through the t-test p-values: At 5% level of significance, we cannot say that population is useful, as we do not have sufficient evidence to reject the null hypothesis that its corresponding coefficient is non-zero. The dummy variable, "NEAR BAY", associated to the categorical predictor, "oceanProximity", is also shown to be insignificant. This might be an indication that comparing to the base case (<1H OCEAN), NEAR BAY does not lead to significant change in Median House Price. A potential real-world explanation of why nearbay might not be influential is that “bay” is a very broad concept; some could be more favourable than others (eg. close to amenities OR prone to environmental issues) so its hard to deduce a clear relationship between proximity to bay and house value. 
+
+Moreover, the R-squared and adjusted R-squared both equal to 0.617 when corrected to 3 decimal places. This means that 61.7% of the variation in the predictors are useful in explaining the variation in the response variable (medianHouseValue). 
+
+Additionally, this initial model also reveals some clear relationships among the varaibles: 
+\begin{itemize}
+  \item Median income has a large, positive coefficient so its a strong positive predictor as we anticipated from the preliminary analysis. 
+  \item longitude and latitude both have large negative coefficients which reiterates our findings before regarding geographic (major cities) relevance. 
+\end{itemize}
+
+ 
+## 2.3 Checking issues in the initial model
+
+```{r}
+par(mfrow = c(2,2))
+plot(initial_fit, cex = 0.1)
+```
+
+### 2.3.1 Residual Plot:
+
+The residual plot shows that the points are not quite randomly scattered around zero. This means that the homoskedasiticity and linear assumption might be questionable. To address non-linearity, we can consider polynomial terms or interactions.
+
+The funnel shape (the spread of residuals seems to increase as the fitted values increase) within the fitted value range (0, 400000) strengthens my doubt of heteroskedasticity. We may consider transforming some of our predictors later.
+
+There are some outliers in the residuals that are far away from zero. These influential points may be high-leverage or outliers or both - should be investigated later.
+
+```{r}
+par(mfrow = c(1, 1)) 
+options(scipen = 999) 
+plot(initial_fit, which = 1, cex = 0.2, pch = 16, cex.axis = 0.6,
+     main = "Residual Plot (Residual vs Fitted) of Fit1 (using all Predictors)") 
+```
+
+### 2.3.2 QQ Plot for Residuals:
+
+A key assumption behind generalized linear model is that the error term is normally distributed. This is why t-statistics and F-statistics can be used in our previous testing.
 
 T-stats are robust under some mild deviation from normality, but under extreme non-normality, these statistics become less reliable.
 
@@ -488,6 +598,8 @@ Note: Some relate to covariance matrix others do not
 
 -   See **1.2.6** for the justification of other non-linear terms used in the final model (i.e. log and polynomial transformations).
 
+```
+
 ### 2.4.3 Best subset selection with new predictors and interaction terms
 
 New function - Must run to run next chunk
@@ -627,6 +739,9 @@ From the output it is clear that the model has improved since the reintroduction
 From the Residuals vs Fitted plot it is clear that the fit has improved significantly since the original model and the Scale Location plot displays less heteroscedasticity than the previous model. However one cause for concern is the significant leverage (for one row leverage is 1). However from further investigation it is clear that the the highly leveraged points relate to the four row where oceanProximity is ISLAND. If they are removed ISLAND can't be used a predictor and hence neither than oceanProximity. This high leverage for a minority of houses is where oceanProximity is ISLAND is a trade-off of the final model.
 
 ### 2.5 Most significant predictors
+
+
+### 2.4.4 Ridge Regression
 
 ```{r}
 # Using best selection
@@ -774,6 +889,14 @@ OMAR WILL EXPLAIN
 
 ## 4.1 Test MSE for the final (best) model
 
+### 2.5 Most significant predictors
+
+# 3 Assessing the model performance
+
+# 4 A Prediction Competition
+
+## 4.1 Test MSE for the 3 main models
+
 ```{r}
 
 test_data <- read.csv("Assignt1_test full.csv")
@@ -813,8 +936,27 @@ actual <- test_data$medianHouseValue
 
 
 # Best model
+pred <- pmax(pmin(pred,500001),14999)
+#OG
+pred <- predict(initial_fit, newdata = test_data  )
+pred <- pmax(pmin(pred,500001),14999)
+og_mse <- mean((pred - actual)^2)
+og_mse
+
+
+#Best model
 pred <- predict(model.best, newdata = test_data  )
 pred <- pmax(pmin(pred,500001),14999)
 best_mse <- mean((pred - actual)^2)
 best_mse # Chosen test MSE for competition
 ```
+
+best so far
+
+[1] 4548677455
+
+[1] 3763439107
+
+[1] 3856612972
+
+## 4.2 Chosen model and test MSE
