@@ -217,44 +217,47 @@ From the plot, island housing appears to be most valuable on average, whereas in
 
 ### 1.2.6 Non-linear considerations
 
-By performing single linear regressions, we find that individual pair of relationships are all statistically significant. However, some assumptions necessary for OLS are clearly violated (e.g. heteroskedasiticty), and some relationship are clearly non-linear. We therefore consider polynomial and log transformations for the following pairwise relationships:  
+By performing single linear regressions, we find that individual pair of relationships are all statistically significant. However, some assumptions necessary for OLS are clearly violated (e.g. heteroskedasiticty, normality), and some relationship are clearly non-linear. We therefore consider polynomial and log transformations for the following pairwise relationships:  
 
-For longitude and latitude, it is apparent that a polynomial model with degree 2 and 3 is better than the linear model. 
+Single regression of medianHouseValue on longitude and latitude shows clear non-linearity. This is evident from the residual plot, where the red reference line shows curved patterns. 
 ```{r}
 lm.latitude = lm(medianHouseValue ~ latitude, data = data)
-lm.latitude.poly2 = lm(medianHouseValue ~ poly(latitude, 2, raw = T), data = data)
-lm.latitude.poly3 = lm(medianHouseValue ~ poly(latitude, 3, raw = T), data = data) 
 lm.longitude = lm(medianHouseValue ~ longitude, data = data)
-lm.longitude.poly2 = lm(medianHouseValue ~ poly(longitude, 2, raw = T), data = data)
-lm.longitude.poly3 = lm(medianHouseValue ~ poly(longitude, 3, raw = T), data = data) 
 par(mfrow = c(2,2))
 plot(lm.latitude, cex = 0.1)
-plot(lm.latitude.poly2, cex = 0.1) 
-plot(lm.latitude.poly3, cex = 0.1) 
-# logitude and latitude up to degree 3 
+plot(lm.longitude, cex = 0.1)
+```
+By fitting a polynomial regression up to degree 3, we observe an improvement in Adjusted R², and the residual plot pattern also improves. The ANOVA test further supports a significant model improvement. To avoid overfitting, we choose not to explore higher-degree polynomials. 
+```{r}
+# logitude and latitude up to degree 3: 
+lm.latitude.poly2 = lm(medianHouseValue ~ poly(latitude, 2, raw = T), data = data)
+lm.latitude.poly3 = lm(medianHouseValue ~ poly(latitude, 3, raw = T), data = data) 
+lm.longitude.poly2 = lm(medianHouseValue ~ poly(longitude, 2, raw = T), data = data)
+lm.longitude.poly3 = lm(medianHouseValue ~ poly(longitude, 3, raw = T), data = data) 
+# par(mfrow = c(2,2))
+# plot(lm.latitude, cex = 0.1)
+# plot(lm.latitude.poly2, cex = 0.1) 
+# plot(lm.latitude.poly3, cex = 0.1) 
 
-
-
-  #  I(latitude^2) + 
-   # I(longitude^2) +
-   # I(latitude^3) + 
-   # I(longitude^3) +
-    
+anova(lm.latitude, lm.latitude.poly2, lm.latitude.poly3)
+anova(lm.longitude, lm.longitude.poly2, lm.longitude.poly3)
 ```
 
-#### Housing Median Age: want to justify why degree 2 polynomial is better 
+The normality assumption appears violated for housingMedianAge, as seen in the QQ plot. Although the residual pattern remains largely unchanged, the second-degree polynomial model improves Adjusted R² (from 0.011 to 0.017) and yields a statistically significant improvement in fit (ANOVA p < 2.2e-16). Therefore, we include the degree-2 polynomial in the model selection stage.
 ```{r}
-
 lm.housingMedianAge <- lm(medianHouseValue ~ housingMedianAge, data = data)
 lm.housingMedianAge.poly2 <- lm(medianHouseValue 
                                 ~ poly(housingMedianAge, 2, raw = T), 
                                 data = data)
-lm.housingMedianAge.poly3 <- lm(medianHouseValue 
-                                ~ poly(housingMedianAge, 3, raw = T), 
-                                data = data)
+
 par(mfrow = c(2,2)); plot(lm.housingMedianAge, cex = 0.1)
 par(mfrow = c(2,2)); plot(lm.housingMedianAge.poly2, cex = 0.1)
-anova(lm.housingMedianAge, lm.housingMedianAge.poly2, lm.housingMedianAge.poly3 ) 
+
+summary(lm.housingMedianAge)
+summary(lm.housingMedianAge.poly2)
+
+anova(lm.housingMedianAge, 
+      lm.housingMedianAge.poly2) 
 ```
 
 Polynomial regression of medianHouseValue on medianIncome up to degree 3 is also shown to have a better fit than lower degree polynomial as well as linear model. In particular, with the evidence from the anova F-test, we conclude that degree-3 is significantly better than degree-2, whereas moving to higher degree (i.e. quartic) does not bring additional significant benefit. 
@@ -275,14 +278,13 @@ lm.medianIncome.poly3 <- lm(medianHouseValue ~ poly(medianIncome, 3, raw = T),
 
 lm.medianIncome.poly4 <- lm(medianHouseValue ~ poly(medianIncome, 4, raw = T),
                             data = data)
-
 anova(lm.medianIncome, 
       lm.medianIncome.poly2, 
       lm.medianIncome.poly3, 
       lm.medianIncome.poly4) 
 ```
 
-Further, the predictor "population" suffers from high leverage point and heteroskedasticity. To address this issue, a log transform is applied to the original data. From the pre-log-transform residual plot, the residuals are skewed/clustered at one end, whereas the post-log plot show better random scattering. This indicates that a log transform improves linearity between the response and the predictor, which motivates us to implement this improvement in our final model. 
+The predictor "population" suffers from high leverage point and heteroskedasticity. To address this issue, a log transform is applied to the original data. From the pre-log-transform residual plot, the residuals are clustered at one end, whereas the post-log plot show better random scattering. This indicates that a log transform improves linearity between the response and the predictor, which motivates us to implement this improvement in our final model. 
 ```{r}
 lm.pop <- lm(medianHouseValue ~ population, data = data) 
 summary(lm.pop)
