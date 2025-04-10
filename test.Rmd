@@ -230,42 +230,96 @@ individual pair of relationships are all statistically significant:
 
 But some assumptions necessary for OLS are clearly violated (e.g. heteroskedasiticty, )
 
-
-### 1.2.6 Non-linear considerations
-
-SUE
-
-individual pair of relationships are all statistically significant:
+Some relationships are clearly non-linear so have to consider transformations 
 
 ```{r }
-# comment: I don't think we should report all of them below, just the important ones should suffice 
-# comment: I will keep the entire, original chunk here for now: 
-
 #Do each linear regression separately and view plots
 #longitude, clearly non-linear poly?
 lm.fit <- lm(medianHouseValue~longitude,data = data) 
 summary(lm.fit)
 plot(lm.fit)
 
+# latitude, again non-linear poly?
+lm.fit <- lm(medianHouseValue~latitude,data = data) 
+summary(lm.fit)
+plot(lm.fit)
+```
+
+```{r}
+#housing median age - good fit for first graph
+lm.fit <- lm(medianHouseValue~housingMedianAge,data = data) 
+summary(lm.fit)
+plot(lm.fit)
+
+#aveRooms, definitely non-linear, big issue with high leverage points
+lm.fit <- lm(medianHouseValue~aveRooms,data = data) 
+summary(lm.fit)
+plot(lm.fit)
+
+
+#aveBedrooms, issue with high leverage points
+lm.fit <- lm(medianHouseValue~aveBedrooms,data = data) 
+summary(lm.fit)
+plot(lm.fit)
+
+#population, issues with leverage, heterscedascity
+lm.fit <- lm(medianHouseValue~population,data = data) 
+summary(lm.fit)
+plot(lm.fit)
+
+#medianIncome non-linear and heterscedascity, some influential points too
+lm.fit <- lm(medianHouseValue~medianIncome,data = data) 
+summary(lm.fit)
+plot(lm.fit)
+
+#oceanProximity catergorical and need to play around with this a bit
+lm.fit <- lm(medianHouseValue~oceanProximity,data = data) 
+summary(lm.fit)
+plot(lm.fit)
+```
+
+```{r}
+# Keep medianIncome the same
+#playing around a bit
+#medianIncome non-linear and heterscedascity, some influential points too
+#better
+
+lm.fit <- lm(medianHouseValue~medianIncome,data = data)
+summary(lm.fit)
+par(mforw = c(2,2)); plot(lm.fit)
+
+lm.fit <- lm(medianHouseValue~log(medianIncome),data = data) 
+summary(lm.fit)
+par(mforw = c(2,2)); plot(lm.fit)
+
+#poly 2 looks pretty good, better than log
+lm.fit <- lm(medianHouseValue~poly(medianIncome,2),data = data) 
+summary(lm.fit)
+par(mforw = c(2,2)); plot(lm.fit)
+```
+
 
 But some assumptions necessary for OLS are clearly violated (e.g. heteroskedasiticty, )
 
-Some relationships are clearly non-linear so have to consider transformations
-
-this is an example of an approach to take for pop
+Some relationships are clearly non-linear so have to consider transformations this is an example of an approach to take for pop
 
 ```{r}
 ## MOST IMPORTANT BITS
 
+#looks way better
 #population, issues with leverage, heterscedascity
-lm.pop <- lm(medianHouseValue~population,data = data) 
-plot(lm.pop)
-
-#population, issues with leverage, heterscedascity
-lm.log.pop <- lm(medianHouseValue~log(population),data = data) 
-plot(lm.log.pop)
+lm.fit <- lm(medianHouseValue~log(population),data = data) 
+summary(lm.fit)
+plot(lm.fit)
 
 
+lm.fit <- lm(medianHouseValue~bedroomsPerRoom,data = data) 
+summary(lm.fit)
+plot(lm.fit)
+
+lm.fit <- lm(medianHouseValue~aveBedroomsPerRoom,data = data) 
+summary(lm.fit)
+plot(lm.fit)
 ```
 
 
@@ -317,7 +371,8 @@ The residual plot shows that the points are not quite randomly scattered around 
 
 The funnel shape (the spread of residuals seems to increase as the fitted values increase) within the fitted value range (0, 400000) strengthens my doubt of heteroscedasticity. We may consider transforming some of our predictors later.
 
-
+```{r}
+# BEDROOMS PER ROOM NOT FOUND ERROR!!!!!!!!!!!!!!1
 lm.fit <- lm(medianHouseValue~bedroomsPerRoom,data = data) 
 summary(lm.fit)
 plot(lm.fit)
@@ -365,7 +420,7 @@ T-stats are robust under some mild deviation from normality, but under extreme n
 
 In our plot, the points deviates from the reference line (dashed line) for larger and smaller quantiles (roughly outside of this range: (-2, 1.5)), indicating non-normality (especially high skewness) and influence of outliers especially at the tails.
 
-```{r}
+
 Having concluded that this model (initial_fit) has overall significance, we can gauge the significance of individual predictors through the t-test p-values: At 5% level of significance, we cannot say that population is useful, as we do not have sufficient evidence to reject the null hypothesis that its corresponding coefficient is non-zero. The dummy variable, "NEAR BAY", associated to the categorical predictor, "oceanProximity", is also shown to be insignificant. This might be an indication that comparing to the base case (<1H OCEAN), NEAR BAY does not lead to significant change in Median House Price. A potential real-world explanation of why nearbay might not be influential is that “bay” is a very broad concept; some could be more favourable than others (eg. close to amenities OR prone to environmental issues) so its hard to deduce a clear relationship between proximity to bay and house value. 
 
 Moreover, the R-squared and adjusted R-squared both equal to 0.617 when corrected to 3 decimal places. This means that 61.7% of the variation in the predictors are useful in explaining the variation in the response variable (medianHouseValue). 
@@ -598,14 +653,11 @@ Note: Some relate to covariance matrix others do not
 
 -   See **1.2.6** for the justification of other non-linear terms used in the final model (i.e. log and polynomial transformations).
 
-```
-
 ### 2.4.3 Best subset selection with new predictors and interaction terms
 
 New function - Must run to run next chunk
 
 ```{r}
-library(leaps)
 #since can't call predict for regsubsets. doing the same thing as the for loop
 predict.regsubsets=function(object,newdata,id,...){ #... allows for other arguments to be passed into the function
   form=as.formula(object$call[[2]])
@@ -620,10 +672,6 @@ predict.regsubsets=function(object,newdata,id,...){ #... allows for other argume
 Checking whether all of the chosen predictors are worth adding. Do they result in the **best** model?
 
 ```{r, echo=FALSE}
-
-
-
-library(car)
 # k-fold CV
 
 formula_string <- "  medianHouseValue ~ 
